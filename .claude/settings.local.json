@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(wc -c D:/program/llm/prd-skill/product-requirement-v2/**/*.md D:/program/llm/prd-skill/product-requirement-v2/*.md)"
+    ]
+  }
+}

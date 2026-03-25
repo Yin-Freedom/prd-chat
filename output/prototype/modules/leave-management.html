@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>请假管理 - 考勤管理系统</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#1a365d',
+                        accent: '#ed8936',
+                    },
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        .tab-active {
+            border-bottom: 3px solid #ed8936;
+            color: #1a365d;
+            font-weight: 600;
+        }
+        .status-pending {
+            background-color: #fef3c7;
+            color: #d97706;
+        }
+        .status-approved {
+            background-color: #d1fae5;
+            color: #059669;
+        }
+        .status-rejected {
+            background-color: #fee2e2;
+            color: #dc2626;
+        }
+        .status-cancelled {
+            background-color: #f3f4f6;
+            color: #6b7280;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- 页面头部 -->
+    <div class="bg-white shadow-sm border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-2xl font-bold text-primary">请假管理</h1>
+                    <p class="text-gray-500 mt-1">处理员工请假申请、审批和记录管理</p>
+                </div>
+                <div class="flex gap-3">
+                    <button onclick="openBalanceModal()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition flex items-center gap-2">
+                        <i class="fas fa-calculator"></i>
+                        假期余额管理
+                    </button>
+                    <button onclick="openLeaveModal()" class="px-4 py-2 bg-accent text-white rounded-lg hover:bg-orange-500 transition flex items-center gap-2">
+                        <i class="fas fa-plus"></i>
+                        新增请假
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto px-6 py-6">
+        <!-- 筛选区 -->
+        <div class="bg-white rounded-xl shadow-sm p-5 mb-6">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">员工姓名</label>
+                    <input type="text" id="filterName" placeholder="请输入员工姓名"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">请假类型</label>
+                    <select id="filterType" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent">
+                        <option value="">全部类型</option>
+                        <option value="年假">年假</option>
+                        <option value="事假">事假</option>
+                        <option value="病假">病假</option>
+                        <option value="婚假">婚假</option>
+                        <option value="产假">产假</option>
+                        <option value="陪产假">陪产假</option>
+                        <option value="丧假">丧假</option>
+                        <option value="调休">调休</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">开始日期</label>
+                    <input type="date" id="filterStartDate"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">结束日期</label>
+                    <input type="date" id="filterEndDate"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent">
+                </div>
+            </div>
+            <div class="flex justify-end mt-4 gap-2">
+                <button onclick="resetFilters()" class="px-4 py-2 text-gray-600 hover:text-gray-800">重置</button>
+                <button onclick="applyFilters()" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-900 transition">查询</button>
+            </div>
+        </div>
+
+        <!-- Tab切换 -->
+        <div class="bg-white rounded-xl shadow-sm mb-6">
+            <div class="border-b border-gray-200">
+                <nav class="flex space-x-8 px-6" aria-label="Tabs">
+                    <button onclick="switchTab('all')" id="tab-all" class="tab-active py-4 px-1 text-sm font-medium border-b-3">
+                        全部
+                    </button>
+                    <button onclick="switchTab('pending')" id="tab-pending" class="py-4 px-1 text-sm font-medium text-gray-500 hover:text-gray-700 border-b-3 border-transparent">
+                        待审批
+                    </button>
+                    <button onclick="switchTab('approved')" id="tab-approved" class="py-4 px-1 text-sm font-medium text-gray-500 hover:text-gray-700 border-b-3 border-transparent">
+                        已通过
+                    </button>
+                    <button onclick="switchTab('rejected')" id="tab-rejected" class="py-4 px-1 text-sm font-medium text-gray-500 hover:text-gray-700 border-b-3 border-transparent">
+                        已拒绝
+                    </button>
+                    <button onclick="switchTab('cancelled')" id="tab-cancelled" class="py-4 px-1 text-sm font-medium text-gray-500 hover:text-gray-700 border-b-3 border-transparent">
+                        已撤销
+                    </button>
+                </nav>
+            </div>
+
+            <!-- 数据表格 -->
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">序号</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">申请人</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">部门</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">请假类型</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">开始时间</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">结束时间</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">时长</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">原因</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">审批状态</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200" id="leaveTableBody">
+                        <!-- 数据行将通过JS渲染 -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- 分页 -->
+            <div class="bg-white px-6 py-4 flex items-center justify-between border-t border-gray-200">
+                <div class="text-sm text-gray-500">
+                    显示第 <span class="font-medium">1</span> - <span class="font-medium">8</span> 条，共 <span class="font-medium">8</span> 条
+                </div>
+                <div class="flex gap-2">
+                    <button class="px-3 py-1 border border-gray-300 rounded text-gray-400 cursor-not-allowed">上一页</button>
+                    <button class="px-3 py-1 bg-primary text-white rounded">1</button>
+                    <button class="px-3 py-1 border border-gray-300 rounded text-gray-400 cursor-not-allowed">下一页</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 新增请假弹窗 -->
+    <div id="leaveModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4">
+            <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                <h3 class="text-lg font-semibold text-primary">新增请假申请</h3>
+                <button onclick="closeLeaveModal()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="leaveForm" class="p-6 space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">请假类型 <span class="text-red-500">*</span></label>
+                    <select name="leaveType" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent">
+                        <option value="">请选择请假类型</option>
+                        <option value="年假">年假</option>
+                        <option value="事假">事假</option>
+                        <option value="病假">病假</option>
+                        <option value="婚假">婚假</option>
+                        <option value="产假">产假</option>
+                        <option value="陪产假">陪产假</option>
+                        <option value="丧假">丧假</option>
+                        <option value="调休">调休</option>
+                    </select>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">开始时间 <span class="text-red-500">*</span></label>
+                        <input type="datetime-local" name="startTime" required
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">结束时间 <span class="text-red-500">*</span></label>
+                        <input type="datetime-local" name="endTime" required
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">请假时长（小时）</label>
+                    <input type="number" name="duration" placeholder="自动计算" readonly
+                           class="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">请假原因 <span class="text-red-500">*</span></label>
+                    <textarea name="reason" rows="3" required placeholder="请输入请假原因"
+                              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"></textarea>
+                </div>
+            </form>
+            <div class="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+                <button onclick="closeLeaveModal()" class="px-4 py-2 text-gray-600 hover:text-gray-800">取消</button>
+                <button onclick="submitLeave()" class="px-4 py-2 bg-accent text-white rounded-lg hover:bg-orange-500 transition">提交申请</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 审批弹窗 -->
+    <div id="approvalModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4">
+            <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                <h3 class="text-lg font-semibold text-primary">请假审批</h3>
+                <button onclick="closeApprovalModal()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="p-6">
+                <div class="bg-gray-50 rounded-lg p-4 mb-4">
+                    <div class="grid grid-cols-2 gap-3 text-sm">
+                        <div><span class="text-gray-500">申请人：</span><span id="approvalApplicant" class="font-medium"></span></div>
+                        <div><span class="text-gray-500">部门：</span><span id="approvalDept" class="font-medium"></span></div>
+                        <div><span class="text-gray-500">请假类型：</span><span id="approvalType" class="font-medium"></span></div>
+                        <div><span class="text-gray-500">时长：</span><span id="approvalDuration" class="font-medium"></span></div>
+                        <div class="col-span-2"><span class="text-gray-500">时间范围：</span><span id="approvalTime" class="font-medium"></span></div>
+                        <div class="col-span-2"><span class="text-gray-500">请假原因：</span><span id="approvalReason" class="font-medium"></span></div>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">审批意见</label>
+                    <textarea id="approvalComment" rows="3" placeholder="请输入审批意见（选填）"
+                              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"></textarea>
+                </div>
+            </div>
+            <div class="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+                <button onclick="rejectLeave()" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition">
+                    <i class="fas fa-times mr-1"></i>拒绝
+                </button>
+                <button onclick="approveLeave()" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition">
+                    <i class="fas fa-check mr-1"></i>通过
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 假期余额管理弹窗 -->
+    <div id="balanceModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl mx-4 max-h-[90vh] overflow-hidden flex flex-col">
+            <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                <h3 class="text-lg font-semibold text-primary">假期余额管理</h3>
+                <button onclick="closeBalanceModal()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="p-6 overflow-auto flex-1">
+                <table class="w-full">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">员工</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">部门</th>
+                            <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">年假余额</th>
+                            <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">调休余额</th>
+                            <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">已用年假</th>
+                            <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">已用调休</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200">
+                        <tr>
+                            <td class="px-4 py-3 text-sm">张伟</td>
+                            <td class="px-4 py-3 text-sm">技术部</td>
+                            <td class="px-4 py-3 text-sm text-center">5天</td>
+                            <td class="px-4 py-3 text-sm text-center">8小时</td>
+                            <td class="px-4 py-3 text-sm text-center">5天</td>
+                            <td class="px-4 py-3 text-sm text-center">0小时</td>
+                            <td class="px-4 py-3 text-sm">
+                                <button class="text-accent hover:text-orange-500">调整</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="px-4 py-3 text-sm">李娜</td>
+                            <td class="px-4 py-3 text-sm">市场部</td>
+                            <td class="px-4 py-3 text-sm text-center">10天</td>
+                            <td class="px-4 py-3 text-sm text-center">16小时</td>
+                            <td class="px-4 py-3 text-sm text-center">0天</td>
+                            <td class="px-4 py-3 text-sm text-center">0小时</td>
+                            <td class="px-4 py-3 text-sm">
+                                <button class="text-accent hover:text-orange-500">调整</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="px-4 py-3 text-sm">王强</td>
+                            <td class="px-4 py-3 text-sm">财务部</td>
+                            <td class="px-4 py-3 text-sm text-center">7天</td>
+                            <td class="px-4 py-3 text-sm text-center">4小时</td>
+                            <td class="px-4 py-3 text-sm text-center">3天</td>
+                            <td class="px-4 py-3 text-sm text-center">4小时</td>
+                            <td class="px-4 py-3 text-sm">
+                                <button class="text-accent hover:text-orange-500">调整</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="px-4 py-3 text-sm">赵敏</td>
+                            <td class="px-4 py-3 text-sm">人事部</td>
+                            <td class="px-4 py-3 text-sm text-center">12天</td>
+                            <td class="px-4 py-3 text-sm text-center">0小时</td>
+                            <td class="px-4 py-3 text-sm text-center">3天</td>
+                            <td class="px-4 py-3 text-sm text-center">0小时</td>
+                            <td class="px-4 py-3 text-sm">
+                                <button class="text-accent hover:text-orange-500">调整</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="px-6 py-4 border-t border-gray-200 flex justify-end">
+                <button onclick="closeBalanceModal()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 详情弹窗 -->
+    <div id="detailModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4">
+            <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                <h3 class="text-lg font-semibold text-primary">请假详情</h3>
+                <button onclick="closeDetailModal()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="p-6">
+                <div class="space-y-3">
+                    <div class="flex"><span class="text-gray-500 w-20">申请人：</span><span id="detailApplicant" class="font-medium"></span></div>
+                    <div class="flex"><span class="text-gray-500 w-20">部门：</span><span id="detailDept" class="font-medium"></span></div>
+                    <div class="flex"><span class="text-gray-500 w-20">请假类型：</span><span id="detailType" class="font-medium"></span></div>
+                    <div class="flex"><span class="text-gray-500 w-20">开始时间：</span><span id="detailStart" class="font-medium"></span></div>
+                    <div class="flex"><span class="text-gray-500 w-20">结束时间：</span><span id="detailEnd" class="font-medium"></span></div>
+                    <div class="flex"><span class="text-gray-500 w-20">时长：</span><span id="detailDuration" class="font-medium"></span></div>
+                    <div class="flex"><span class="text-gray-500 w-20">请假原因：</span><span id="detailReason" class="font-medium"></span></div>
+                    <div class="flex"><span class="text-gray-500 w-20">审批状态：</span><span id="detailStatus" class="font-medium"></span></div>
+                    <div class="flex"><span class="text-gray-500 w-20">审批人：</span><span id="detailApprover" class="font-medium"></span></div>
+                    <div class="flex"><span class="text-gray-500 w-20">审批意见：</span><span id="detailComment" class="font-medium"></span></div>
+                </div>
+            </div>
+            <div class="px-6 py-4 border-t border-gray-200 flex justify-end">
+                <button onclick="closeDetailModal()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 模拟数据
+        const leaveData = [
+            {
+                id: 1,
+                applicant: '张伟',
+                dept: '技术部',
+                type: '年假',
+                startTime: '2026-03-28 09:00',
+                endTime: '2026-03-31 18:00',
+                duration: '3天',
+                reason: '家庭事务处理',
+                status: 'pending',
+                approver: null,
+                comment: null
+            },
+            {
+                id: 2,
+                applicant: '李娜',
+                dept: '市场部',
+                type: '事假',
+                startTime: '2026-03-26 09:00',
+                endTime: '2026-03-26 18:00',
+                duration: '1天',
+                reason: '个人事务',
+                status: 'approved',
+                approver: '王强',
+                comment: '同意'
+            },
+            {
+                id: 3,
+                applicant: '王强',
+                dept: '财务部',
+                type: '病假',
+                startTime: '2026-03-25 09:00',
+                endTime: '2026-03-26 18:00',
+                duration: '2天',
+                reason: '身体不适需要休息',
+                status: 'approved',
+                approver: '赵敏',
+                comment: '注意休息'
+            },
+            {
+                id: 4,
+                applicant: '赵敏',
+                dept: '人事部',
+                type: '调休',
+                startTime: '2026-03-27 14:00',
+                endTime: '2026-03-27 18:00',
+                duration: '4小时',
+                reason: '周六加班调休',
+                status: 'pending',
+                approver: null,
+                comment: null
+            },
+            {
+                id: 5,
+                applicant: '陈明',
+                dept: '技术部',
+                type: '年假',
+                startTime: '2026-04-01 09:00',
+                endTime: '2026-04-05 18:00',
+                duration: '5天',
+                reason: '清明节回老家扫墓',
+                status: 'pending',
+                approver: null,
+                comment: null
+            },
+            {
+                id: 6,
+                applicant: '刘洋',
+                dept: '运营部',
+                type: '婚假',
+                startTime: '2026-04-10 09:00',
+                endTime: '2026-04-17 18:00',
+                duration: '5天',
+                reason: '结婚',
+                status: 'approved',
+                approver: '赵敏',
+                comment: '新婚快乐！'
+            },
+            {
+                id: 7,
+                applicant: '黄芳',
+                dept: '设计部',
+                type: '事假',
+                startTime: '2026-03-20 09:00',
+                endTime: '2026-03-20 18:00',
+                duration: '1天',
+                reason: '处理房屋租赁事宜',
+                status: 'rejected',
+                approver: '张伟',
+                comment: '项目紧急，请调整时间'
+            },
+            {
+                id: 8,
+                applicant: '周杰',
+                dept: '技术部',
+                type: '病假',
+                startTime: '2026-03-18 09:00',
+                endTime: '2026-03-18 18:00',
+                duration: '1天',
+                reason: '感冒发烧',
+                status: 'cancelled',
+                approver: null,
+                comment: null
+            }
+        ];
+
+        let currentTab = 'all';
+        let currentApprovalId = null;
+
+        // 渲染表格
+        function renderTable(data) {
+            const tbody = document.getElementById('leaveTableBody');
+            tbody.innerHTML = data.map((item, index) => `
+                <tr class="hover:bg-gray-50">
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${index + 1}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item.applicant}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${item.dept}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                        <span class="px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800">${item.type}</span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${item.startTime}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${item.endTime}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item.duration}</td>
+                    <td class="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">${item.reason}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                        ${getStatusBadge(item.status)}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                        ${getActionButtons(item)}
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // 状态徽章
+        function getStatusBadge(status) {
+            const statusMap = {
+                pending: '<span class="status-pending px-2 py-1 rounded text-xs font-medium">待审批</span>',
+                approved: '<span class="status-approved px-2 py-1 rounded text-xs font-medium">已通过</span>',
+                rejected: '<span class="status-rejected px-2 py-1 rounded text-xs font-medium">已拒绝</span>',
+                cancelled: '<span class="status-cancelled px-2 py-1 rounded text-xs font-medium">已撤销</span>'
+            };
+            return statusMap[status] || status;
+        }
+
+        // 操作按钮
+        function getActionButtons(item) {
+            let buttons = `<button onclick="viewDetail(${item.id})" class="text-primary hover:text-blue-800 mr-2" title="查看详情"><i class="fas fa-eye"></i></button>`;
+
+            if (item.status === 'pending') {
+                buttons += `<button onclick="openApprovalModal(${item.id})" class="text-green-600 hover:text-green-800 mr-2" title="审批"><i class="fas fa-check-circle"></i></button>`;
+                buttons += `<button onclick="editLeave(${item.id})" class="text-accent hover:text-orange-500 mr-2" title="编辑"><i class="fas fa-edit"></i></button>`;
+                buttons += `<button onclick="cancelLeave(${item.id})" class="text-gray-600 hover:text-gray-800" title="撤销"><i class="fas fa-undo"></i></button>`;
+            }
+
+            return buttons;
+        }
+
+        // Tab切换
+        function switchTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('[id^="tab-"]').forEach(btn => {
+                btn.classList.remove('tab-active');
+                btn.classList.add('text-gray-500', 'border-transparent');
+            });
+            document.getElementById(`tab-${tab}`).classList.add('tab-active');
+            document.getElementById(`tab-${tab}`).classList.remove('text-gray-500', 'border-transparent');
+
+            let filteredData = leaveData;
+            if (tab !== 'all') {
+                filteredData = leaveData.filter(item => item.status === tab);
+            }
+            renderTable(filteredData);
+        }
+
+        // 筛选
+        function applyFilters() {
+            const name = document.getElementById('filterName').value.toLowerCase();
+            const type = document.getElementById('filterType').value;
+
+            let filteredData = leaveData.filter(item => {
+                let match = true;
+                if (name && !item.applicant.toLowerCase().includes(name)) match = false;
+                if (type && item.type !== type) match = false;
+                if (currentTab !== 'all' && item.status !== currentTab) match = false;
+                return match;
+            });
+
+            renderTable(filteredData);
+        }
+
+        function resetFilters() {
+            document.getElementById('filterName').value = '';
+            document.getElementById('filterType').value = '';
+            document.getElementById('filterStartDate').value = '';
+            document.getElementById('filterEndDate').value = '';
+            switchTab(currentTab);
+        }
+
+        // 新增请假弹窗
+        function openLeaveModal() {
+            document.getElementById('leaveModal').classList.remove('hidden');
+        }
+
+        function closeLeaveModal() {
+            document.getElementById('leaveModal').classList.add('hidden');
+            document.getElementById('leaveForm').reset();
+        }
+
+        function submitLeave() {
+            const form = document.getElementById('leaveForm');
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+            }
+            alert('请假申请已提交！');
+            closeLeaveModal();
+        }
+
+        // 审批弹窗
+        function openApprovalModal(id) {
+            currentApprovalId = id;
+            const item = leaveData.find(l => l.id === id);
+            document.getElementById('approvalApplicant').textContent = item.applicant;
+            document.getElementById('approvalDept').textContent = item.dept;
+            document.getElementById('approvalType').textContent = item.type;
+            document.getElementById('approvalDuration').textContent = item.duration;
+            document.getElementById('approvalTime').textContent = `${item.startTime} ~ ${item.endTime}`;
+            document.getElementById('approvalReason').textContent = item.reason;
+            document.getElementById('approvalComment').value = '';
+            document.getElementById('approvalModal').classList.remove('hidden');
+        }
+
+        function closeApprovalModal() {
+            document.getElementById('approvalModal').classList.add('hidden');
+            currentApprovalId = null;
+        }
+
+        function approveLeave() {
+            alert('已通过该请假申请！');
+            closeApprovalModal();
+            switchTab(currentTab);
+        }
+
+        function rejectLeave() {
+            alert('已拒绝该请假申请！');
+            closeApprovalModal();
+            switchTab(currentTab);
+        }
+
+        // 假期余额弹窗
+        function openBalanceModal() {
+            document.getElementById('balanceModal').classList.remove('hidden');
+        }
+
+        function closeBalanceModal() {
+            document.getElementById('balanceModal').classList.add('hidden');
+        }
+
+        // 详情弹窗
+        function viewDetail(id) {
+            const item = leaveData.find(l => l.id === id);
+            document.getElementById('detailApplicant').textContent = item.applicant;
+            document.getElementById('detailDept').textContent = item.dept;
+            document.getElementById('detailType').textContent = item.type;
+            document.getElementById('detailStart').textContent = item.startTime;
+            document.getElementById('detailEnd').textContent = item.endTime;
+            document.getElementById('detailDuration').textContent = item.duration;
+            document.getElementById('detailReason').textContent = item.reason;
+            document.getElementById('detailStatus').innerHTML = getStatusBadge(item.status);
+            document.getElementById('detailApprover').textContent = item.approver || '-';
+            document.getElementById('detailComment').textContent = item.comment || '-';
+            document.getElementById('detailModal').classList.remove('hidden');
+        }
+
+        function closeDetailModal() {
+            document.getElementById('detailModal').classList.add('hidden');
+        }
+
+        // 编辑请假
+        function editLeave(id) {
+            openLeaveModal();
+            // 填充数据逻辑
+        }
+
+        // 撤销请假
+        function cancelLeave(id) {
+            if (confirm('确定要撤销该请假申请吗？')) {
+                alert('已撤销请假申请！');
+                switchTab(currentTab);
+            }
+        }
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            renderTable(leaveData);
+        });
+    </script>
+</body>
+</html>

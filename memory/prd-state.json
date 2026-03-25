@@ -1,0 +1,186 @@
+{
+  "meta": {
+    "productName": "考勤管理系统",
+    "currentPhase": 6,
+    "progress": "5/5",
+    "lastUpdated": "2026-03-24T12:30:00Z",
+    "moduleProgress": {
+      "total": 5,
+      "completed": 5,
+      "currentModule": null
+    }
+  },
+  "data": {
+    "product": {
+      "name": "考勤管理系统",
+      "description": "基于考勤门禁机，用户通过对人员制定不同考勤计划，实现考勤管理（记录统计、报表生成、异常管理、迟到/早退查看）等",
+      "targetUsers": "企业员工、HR管理员、部门经理、系统管理员",
+      "coreValue": "为TUMS3.0补充考勤能力，满足企业、园区等场景的考勤管理需求，避免客户需要单独使用其他考勤系统"
+    },
+    "roles": [
+      {
+        "name": "企业员工",
+        "responsibilities": "个人考勤查看、异常申请",
+        "scenarios": "日常上下班打卡、请假/补卡申请",
+        "permissions": "仅查看个人考勤数据"
+      },
+      {
+        "name": "HR管理员",
+        "responsibilities": "考勤规则配置、异常处理、报表统计",
+        "scenarios": "制定考勤计划、处理考勤异常、生成报表",
+        "permissions": "管理全员考勤数据、配置权限"
+      },
+      {
+        "name": "部门经理",
+        "responsibilities": "审批下属考勤异常、查看团队考勤",
+        "scenarios": "审批请假/补卡、监督团队出勤",
+        "permissions": "查看本部门考勤数据、审批权限"
+      },
+      {
+        "name": "系统管理员",
+        "responsibilities": "系统配置、权限管理、数据维护",
+        "scenarios": "系统初始化、用户权限分配",
+        "permissions": "全局管理权限、系统配置权限"
+      }
+    ],
+    "modules": [
+      {
+        "id": "M01",
+        "name": "考勤组",
+        "overview": {
+          "description": "设置不同考勤组方便管理",
+          "targetRoles": ["HR管理员"]
+        },
+        "functions": [
+          {"id": "F01-01", "name": "新增考勤组", "type": "新增", "role": "HR管理员", "priority": "高"},
+          {"id": "F01-02", "name": "查询考勤组", "type": "查询", "role": "HR管理员", "priority": "高"},
+          {"id": "F01-03", "name": "编辑考勤组", "type": "修改", "role": "HR管理员", "priority": "高"},
+          {"id": "F01-04", "name": "删除考勤组", "type": "删除", "role": "HR管理员", "priority": "中"},
+          {"id": "F01-05", "name": "查看详情", "type": "查询", "role": "HR管理员", "priority": "高"},
+          {"id": "F01-06", "name": "批量导入考勤组", "type": "导入", "role": "HR管理员", "priority": "中"}
+        ]
+      },
+      {
+        "id": "M02",
+        "name": "班次管理",
+        "overview": {
+          "description": "班次管理用于定义不同的工作时段，如早班、晚班、弹性班等，供考勤组关联使用。",
+          "targetRoles": ["HR管理员"]
+        },
+        "functions": [
+          {"id": "F02-01", "name": "新增班次", "type": "新增", "role": "HR管理员", "priority": "高"},
+          {"id": "F02-02", "name": "查询班次", "type": "查询", "role": "HR管理员", "priority": "高"},
+          {"id": "F02-03", "name": "编辑班次", "type": "修改", "role": "HR管理员", "priority": "高"},
+          {"id": "F02-04", "name": "删除班次", "type": "删除", "role": "HR管理员", "priority": "中"},
+          {"id": "F02-05", "name": "班次详情", "type": "查询", "role": "HR管理员", "priority": "高"}
+        ]
+      },
+      {
+        "id": "M03",
+        "name": "打卡记录",
+        "overview": {
+          "description": "打卡记录模块用于管理和查看员工的上下班打卡数据，支持从考勤门禁机同步数据。",
+          "targetRoles": ["企业员工", "HR管理员", "部门经理"]
+        },
+        "functions": [
+          {"id": "F03-01", "name": "查看个人打卡记录", "type": "查询", "role": "企业员工", "priority": "高"},
+          {"id": "F03-02", "name": "查询打卡记录", "type": "查询", "role": "HR管理员/部门经理", "priority": "高"},
+          {"id": "F03-03", "name": "打卡详情", "type": "查询", "role": "全部角色", "priority": "高"},
+          {"id": "F03-04", "name": "补卡申请", "type": "新增", "role": "企业员工", "priority": "高"},
+          {"id": "F03-05", "name": "导出打卡记录", "type": "导出", "role": "HR管理员", "priority": "中"},
+          {"id": "F03-06", "name": "数据同步", "type": "同步", "role": "系统管理员", "priority": "高"}
+        ]
+      },
+      {
+        "id": "M04",
+        "name": "请假管理",
+        "overview": {
+          "description": "请假管理模块用于处理员工的请假申请、审批和记录管理，支持多种请假类型。",
+          "targetRoles": ["企业员工", "部门经理", "HR管理员"]
+        },
+        "functions": [
+          {"id": "F04-01", "name": "新增请假申请", "type": "新增", "role": "企业员工", "priority": "高"},
+          {"id": "F04-02", "name": "查询请假记录", "type": "查询", "role": "全部角色", "priority": "高"},
+          {"id": "F04-03", "name": "修改请假申请", "type": "修改", "role": "企业员工", "priority": "高"},
+          {"id": "F04-04", "name": "撤销请假申请", "type": "删除", "role": "企业员工", "priority": "中"},
+          {"id": "F04-05", "name": "请假详情", "type": "查询", "role": "全部角色", "priority": "高"},
+          {"id": "F04-06", "name": "请假审批", "type": "审核", "role": "部门经理/HR管理员", "priority": "高"},
+          {"id": "F04-07", "name": "请假统计", "type": "统计", "role": "HR管理员", "priority": "中"},
+          {"id": "F04-08", "name": "假期余额管理", "type": "管理", "role": "HR管理员", "priority": "高"}
+        ]
+      },
+      {
+        "id": "M05",
+        "name": "考勤报表",
+        "overview": {
+          "description": "考勤报表模块用于生成各类考勤统计报表，支持按部门、人员、时间段等维度统计。",
+          "targetRoles": ["HR管理员", "部门经理"]
+        },
+        "functions": [
+          {"id": "F05-01", "name": "考勤日报", "type": "统计", "role": "HR管理员/部门经理", "priority": "高"},
+          {"id": "F05-02", "name": "考勤月报", "type": "统计", "role": "HR管理员", "priority": "高"},
+          {"id": "F05-03", "name": "异常统计", "type": "统计", "role": "HR管理员", "priority": "高"},
+          {"id": "F05-04", "name": "请假统计", "type": "统计", "role": "HR管理员", "priority": "中"},
+          {"id": "F05-05", "name": "自定义报表", "type": "统计", "role": "HR管理员", "priority": "中"},
+          {"id": "F05-06", "name": "导出报表", "type": "导出", "role": "HR管理员", "priority": "高"}
+        ]
+      }
+    ],
+    "flows": [
+      {
+        "id": "FL01",
+        "name": "请假审批流程",
+        "description": "员工提交请假申请，经审批后生效并同步更新考勤记录",
+        "steps": [
+          {"step": 1, "action": "提交请假申请", "role": "企业员工"},
+          {"step": 2, "action": "部门经理审批", "role": "部门经理"},
+          {"step": 3, "action": "HR备案", "role": "HR管理员"},
+          {"step": 4, "action": "生效", "role": "系统"}
+        ]
+      },
+      {
+        "id": "FL02",
+        "name": "补卡审批流程",
+        "description": "员工申请补录遗漏的打卡记录，经审批后更新考勤数据",
+        "steps": [
+          {"step": 1, "action": "提交补卡申请", "role": "企业员工"},
+          {"step": 2, "action": "部门经理审批", "role": "部门经理"},
+          {"step": 3, "action": "生效", "role": "系统"}
+        ]
+      },
+      {
+        "id": "FL03",
+        "name": "新员工考勤配置流程",
+        "description": "新员工入职后，分配考勤组并开始记录考勤",
+        "steps": [
+          {"step": 1, "action": "员工入职", "role": "HR管理员"},
+          {"step": 2, "action": "分配考勤组", "role": "HR管理员"},
+          {"step": 3, "action": "开始打卡", "role": "企业员工"}
+        ]
+      }
+    ],
+    "nonFunctional": {
+      "performance": {
+        "pageResponseTime": "< 3秒",
+        "apiResponseTime": "< 1秒",
+        "concurrentUsers": "200+用户同时在线",
+        "syncDelay": "< 5分钟",
+        "reportGenerationTime": "< 10秒"
+      },
+      "security": {
+        "authentication": "用户名密码登录",
+        "authorization": "RBAC角色权限控制",
+        "dataSecurity": "敏感数据加密存储、定期数据备份",
+        "transportSecurity": "HTTPS加密传输",
+        "auditLog": "操作日志、登录日志记录",
+        "protection": "防SQL注入、防XSS攻击"
+      },
+      "compatibility": {
+        "browsers": "Chrome、Edge、Firefox（最新2个版本）",
+        "deviceType": "PC端为主",
+        "resolutions": "1920×1080、1366×768自适应",
+        "deviceIntegration": "支持主流考勤门禁机数据接入"
+      }
+    }
+  }
+}

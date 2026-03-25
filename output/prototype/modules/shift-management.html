@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>班次管理 - 考勤管理系统</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#1a365d',
+                        accent: '#ed8936',
+                    },
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="p-6">
+        <!-- 页面标题 -->
+        <div class="mb-6">
+            <h1 class="text-2xl font-bold text-primary">班次管理</h1>
+            <p class="text-gray-500 mt-1">定义不同的工作时段，如早班、晚班、弹性班等，供考勤组关联使用</p>
+        </div>
+
+        <!-- 筛选区和操作栏 -->
+        <div class="bg-white rounded-lg shadow-sm p-4 mb-4">
+            <div class="flex flex-wrap items-center justify-between gap-4">
+                <!-- 筛选区 -->
+                <div class="flex items-center gap-3">
+                    <div class="relative">
+                        <input type="text" id="searchKeyword" placeholder="搜索班次名称..."
+                            class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent outline-none w-64">
+                        <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                    </div>
+                    <button onclick="handleSearch()" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition">
+                        <i class="fas fa-search mr-2"></i>搜索
+                    </button>
+                    <button onclick="handleReset()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition">
+                        <i class="fas fa-redo mr-2"></i>重置
+                    </button>
+                </div>
+
+                <!-- 操作栏 -->
+                <div class="flex items-center gap-2">
+                    <button onclick="openAddModal()" class="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent/90 transition">
+                        <i class="fas fa-plus mr-2"></i>新增班次
+                    </button>
+                    <button onclick="handleExport()" class="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition">
+                        <i class="fas fa-download mr-2"></i>导出
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 数据表格 -->
+        <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+            <table class="w-full">
+                <thead class="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600 w-16">序号</th>
+                        <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">班次名称</th>
+                        <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">上班时间</th>
+                        <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">下班时间</th>
+                        <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">工作时长</th>
+                        <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">是否跨天</th>
+                        <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">状态</th>
+                        <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600 w-40">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody" class="divide-y divide-gray-100">
+                    <!-- 数据由JavaScript渲染 -->
+                </tbody>
+            </table>
+
+            <!-- 空状态 -->
+            <div id="emptyState" class="hidden py-12 text-center">
+                <i class="fas fa-inbox text-4xl text-gray-300 mb-4"></i>
+                <p class="text-gray-500">暂无班次数据</p>
+            </div>
+
+            <!-- 分页 -->
+            <div class="flex items-center justify-between px-4 py-3 border-t border-gray-200">
+                <div class="text-sm text-gray-500">
+                    共 <span id="totalCount">0</span> 条记录
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="handlePageChange('prev')" class="px-3 py-1 border border-gray-300 rounded text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <span class="px-3 py-1 text-sm">第 <span id="currentPage">1</span> 页</span>
+                    <button onclick="handlePageChange('next')" class="px-3 py-1 border border-gray-300 rounded text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 新增/编辑弹窗 -->
+    <div id="shiftModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4">
+            <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+                <h3 id="modalTitle" class="text-lg font-semibold text-primary">新增班次</h3>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="shiftForm" class="p-6 space-y-4">
+                <input type="hidden" id="shiftId">
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                        班次名称 <span class="text-red-500">*</span>
+                    </label>
+                    <input type="text" id="shiftName" required
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent outline-none"
+                        placeholder="请输入班次名称">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                            上班时间 <span class="text-red-500">*</span>
+                        </label>
+                        <input type="time" id="startTime" required
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                            下班时间 <span class="text-red-500">*</span>
+                        </label>
+                        <input type="time" id="endTime" required
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent outline-none">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                            允许迟到(分钟)
+                        </label>
+                        <input type="number" id="lateAllowance" min="0" value="0"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent outline-none"
+                            placeholder="0">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                            允许早退(分钟)
+                        </label>
+                        <input type="number" id="earlyAllowance" min="0" value="0"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent outline-none"
+                            placeholder="0">
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-4">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" id="isOvernight" class="w-4 h-4 text-accent border-gray-300 rounded focus:ring-accent">
+                        <span class="text-sm text-gray-700">是否跨天</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" id="status" checked class="w-4 h-4 text-accent border-gray-300 rounded focus:ring-accent">
+                        <span class="text-sm text-gray-700">启用状态</span>
+                    </label>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">备注</label>
+                    <textarea id="remark" rows="2"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent outline-none resize-none"
+                        placeholder="请输入备注信息"></textarea>
+                </div>
+            </form>
+            <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50 rounded-b-lg">
+                <button onclick="closeModal()" class="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition">
+                    取消
+                </button>
+                <button onclick="handleSave()" class="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent/90 transition">
+                    保存
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 详情弹窗 -->
+    <div id="detailModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4">
+            <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+                <h3 class="text-lg font-semibold text-primary">班次详情</h3>
+                <button onclick="closeDetailModal()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div id="detailContent" class="p-6">
+                <!-- 详情内容由JavaScript渲染 -->
+            </div>
+            <div class="flex items-center justify-end px-6 py-4 border-t border-gray-200 bg-gray-50 rounded-b-lg">
+                <button onclick="closeDetailModal()" class="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition">
+                    关闭
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 模拟数据
+        let shiftData = [
+            {
+                id: 1,
+                name: '标准班',
+                startTime: '09:00',
+                endTime: '18:00',
+                workHours: '8小时',
+                isOvernight: false,
+                lateAllowance: 5,
+                earlyAllowance: 5,
+                status: true,
+                remark: '公司标准工作时间'
+            },
+            {
+                id: 2,
+                name: '早班',
+                startTime: '08:00',
+                endTime: '17:00',
+                workHours: '8小时',
+                isOvernight: false,
+                lateAllowance: 5,
+                earlyAllowance: 5,
+                status: true,
+                remark: '适用于生产车间早班人员'
+            },
+            {
+                id: 3,
+                name: '晚班',
+                startTime: '14:00',
+                endTime: '23:00',
+                workHours: '8小时',
+                isOvernight: false,
+                lateAllowance: 5,
+                earlyAllowance: 5,
+                status: true,
+                remark: '适用于生产车间晚班人员'
+            },
+            {
+                id: 4,
+                name: '弹性班',
+                startTime: '10:00',
+                endTime: '19:00',
+                workHours: '8小时',
+                isOvernight: false,
+                lateAllowance: 30,
+                earlyAllowance: 30,
+                status: true,
+                remark: '弹性工作制，允许30分钟弹性时间'
+            },
+            {
+                id: 5,
+                name: '夜班',
+                startTime: '22:00',
+                endTime: '06:00',
+                workHours: '7小时',
+                isOvernight: true,
+                lateAllowance: 10,
+                earlyAllowance: 10,
+                status: true,
+                remark: '跨天夜班，含夜间补贴'
+            }
+        ];
+
+        let currentPage = 1;
+        const pageSize = 10;
+        let filteredData = [...shiftData];
+
+        // 计算工作时长
+        function calculateWorkHours(startTime, endTime, isOvernight) {
+            const [startH, startM] = startTime.split(':').map(Number);
+            const [endH, endM] = endTime.split(':').map(Number);
+
+            let startMinutes = startH * 60 + startM;
+            let endMinutes = endH * 60 + endM;
+
+            if (isOvernight) {
+                endMinutes += 24 * 60;
+            }
+
+            const diffMinutes = endMinutes - startMinutes;
+            const hours = Math.floor(diffMinutes / 60);
+            const minutes = diffMinutes % 60;
+
+            if (minutes === 0) {
+                return `${hours}小时`;
+            }
+            return `${hours}小时${minutes}分钟`;
+        }
+
+        // 渲染表格
+        function renderTable() {
+            const tbody = document.getElementById('tableBody');
+            const emptyState = document.getElementById('emptyState');
+            const start = (currentPage - 1) * pageSize;
+            const end = start + pageSize;
+            const pageData = filteredData.slice(start, end);
+
+            if (pageData.length === 0) {
+                tbody.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+            tbody.innerHTML = pageData.map((item, index) => `
+                <tr class="hover:bg-gray-50 transition">
+                    <td class="px-4 py-3 text-sm text-gray-600">${start + index + 1}</td>
+                    <td class="px-4 py-3 text-sm font-medium text-gray-800">${item.name}</td>
+                    <td class="px-4 py-3 text-sm text-gray-600">${item.startTime}</td>
+                    <td class="px-4 py-3 text-sm text-gray-600">${item.endTime}</td>
+                    <td class="px-4 py-3 text-sm text-gray-600">${item.workHours}</td>
+                    <td class="px-4 py-3 text-sm">
+                        <span class="px-2 py-1 rounded text-xs ${item.isOvernight ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-600'}">
+                            ${item.isOvernight ? '是' : '否'}
+                        </span>
+                    </td>
+                    <td class="px-4 py-3 text-sm">
+                        <span class="px-2 py-1 rounded text-xs ${item.status ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
+                            ${item.status ? '启用' : '禁用'}
+                        </span>
+                    </td>
+                    <td class="px-4 py-3 text-sm">
+                        <button onclick="viewDetail(${item.id})" class="text-primary hover:text-primary/80 mr-2" title="详情">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <button onclick="editShift(${item.id})" class="text-accent hover:text-accent/80 mr-2" title="编辑">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button onclick="deleteShift(${item.id})" class="text-red-500 hover:text-red-600" title="删除">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+
+            document.getElementById('totalCount').textContent = filteredData.length;
+            document.getElementById('currentPage').textContent = currentPage;
+        }
+
+        // 搜索
+        function handleSearch() {
+            const keyword = document.getElementById('searchKeyword').value.trim().toLowerCase();
+            if (keyword) {
+                filteredData = shiftData.filter(item =>
+                    item.name.toLowerCase().includes(keyword)
+                );
+            } else {
+                filteredData = [...shiftData];
+            }
+            currentPage = 1;
+            renderTable();
+        }
+
+        // 重置
+        function handleReset() {
+            document.getElementById('searchKeyword').value = '';
+            filteredData = [...shiftData];
+            currentPage = 1;
+            renderTable();
+        }
+
+        // 分页
+        function handlePageChange(direction) {
+            const totalPages = Math.ceil(filteredData.length / pageSize);
+            if (direction === 'prev' && currentPage > 1) {
+                currentPage--;
+            } else if (direction === 'next' && currentPage < totalPages) {
+                currentPage++;
+            }
+            renderTable();
+        }
+
+        // 打开新增弹窗
+        function openAddModal() {
+            document.getElementById('modalTitle').textContent = '新增班次';
+            document.getElementById('shiftForm').reset();
+            document.getElementById('shiftId').value = '';
+            document.getElementById('status').checked = true;
+            document.getElementById('shiftModal').classList.remove('hidden');
+            document.getElementById('shiftModal').classList.add('flex');
+        }
+
+        // 编辑班次
+        function editShift(id) {
+            const shift = shiftData.find(item => item.id === id);
+            if (!shift) return;
+
+            document.getElementById('modalTitle').textContent = '编辑班次';
+            document.getElementById('shiftId').value = shift.id;
+            document.getElementById('shiftName').value = shift.name;
+            document.getElementById('startTime').value = shift.startTime;
+            document.getElementById('endTime').value = shift.endTime;
+            document.getElementById('lateAllowance').value = shift.lateAllowance;
+            document.getElementById('earlyAllowance').value = shift.earlyAllowance;
+            document.getElementById('isOvernight').checked = shift.isOvernight;
+            document.getElementById('status').checked = shift.status;
+            document.getElementById('remark').value = shift.remark || '';
+
+            document.getElementById('shiftModal').classList.remove('hidden');
+            document.getElementById('shiftModal').classList.add('flex');
+        }
+
+        // 关闭弹窗
+        function closeModal() {
+            document.getElementById('shiftModal').classList.add('hidden');
+            document.getElementById('shiftModal').classList.remove('flex');
+        }
+
+        // 保存班次
+        function handleSave() {
+            const form = document.getElementById('shiftForm');
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+            }
+
+            const id = document.getElementById('shiftId').value;
+            const name = document.getElementById('shiftName').value.trim();
+            const startTime = document.getElementById('startTime').value;
+            const endTime = document.getElementById('endTime').value;
+            const lateAllowance = parseInt(document.getElementById('lateAllowance').value) || 0;
+            const earlyAllowance = parseInt(document.getElementById('earlyAllowance').value) || 0;
+            const isOvernight = document.getElementById('isOvernight').checked;
+            const status = document.getElementById('status').checked;
+            const remark = document.getElementById('remark').value.trim();
+
+            const workHours = calculateWorkHours(startTime, endTime, isOvernight);
+
+            if (id) {
+                // 编辑
+                const index = shiftData.findIndex(item => item.id === parseInt(id));
+                if (index !== -1) {
+                    shiftData[index] = {
+                        ...shiftData[index],
+                        name,
+                        startTime,
+                        endTime,
+                        workHours,
+                        lateAllowance,
+                        earlyAllowance,
+                        isOvernight,
+                        status,
+                        remark
+                    };
+                }
+            } else {
+                // 新增
+                const newId = Math.max(...shiftData.map(item => item.id)) + 1;
+                shiftData.push({
+                    id: newId,
+                    name,
+                    startTime,
+                    endTime,
+                    workHours,
+                    lateAllowance,
+                    earlyAllowance,
+                    isOvernight,
+                    status,
+                    remark
+                });
+            }
+
+            filteredData = [...shiftData];
+            closeModal();
+            renderTable();
+        }
+
+        // 删除班次
+        function deleteShift(id) {
+            if (!confirm('确定要删除该班次吗？')) return;
+
+            shiftData = shiftData.filter(item => item.id !== id);
+            filteredData = filteredData.filter(item => item.id !== id);
+            renderTable();
+        }
+
+        // 查看详情
+        function viewDetail(id) {
+            const shift = shiftData.find(item => item.id === id);
+            if (!shift) return;
+
+            document.getElementById('detailContent').innerHTML = `
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between py-3 border-b border-gray-100">
+                        <span class="text-gray-500">班次名称</span>
+                        <span class="font-medium text-gray-800">${shift.name}</span>
+                    </div>
+                    <div class="flex items-center justify-between py-3 border-b border-gray-100">
+                        <span class="text-gray-500">上班时间</span>
+                        <span class="font-medium text-gray-800">${shift.startTime}</span>
+                    </div>
+                    <div class="flex items-center justify-between py-3 border-b border-gray-100">
+                        <span class="text-gray-500">下班时间</span>
+                        <span class="font-medium text-gray-800">${shift.endTime}</span>
+                    </div>
+                    <div class="flex items-center justify-between py-3 border-b border-gray-100">
+                        <span class="text-gray-500">工作时长</span>
+                        <span class="font-medium text-gray-800">${shift.workHours}</span>
+                    </div>
+                    <div class="flex items-center justify-between py-3 border-b border-gray-100">
+                        <span class="text-gray-500">是否跨天</span>
+                        <span class="font-medium ${shift.isOvernight ? 'text-orange-600' : 'text-gray-800'}">${shift.isOvernight ? '是' : '否'}</span>
+                    </div>
+                    <div class="flex items-center justify-between py-3 border-b border-gray-100">
+                        <span class="text-gray-500">允许迟到</span>
+                        <span class="font-medium text-gray-800">${shift.lateAllowance} 分钟</span>
+                    </div>
+                    <div class="flex items-center justify-between py-3 border-b border-gray-100">
+                        <span class="text-gray-500">允许早退</span>
+                        <span class="font-medium text-gray-800">${shift.earlyAllowance} 分钟</span>
+                    </div>
+                    <div class="flex items-center justify-between py-3 border-b border-gray-100">
+                        <span class="text-gray-500">状态</span>
+                        <span class="px-2 py-1 rounded text-xs ${shift.status ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
+                            ${shift.status ? '启用' : '禁用'}
+                        </span>
+                    </div>
+                    <div class="py-3">
+                        <span class="text-gray-500 block mb-2">备注</span>
+                        <span class="text-gray-800">${shift.remark || '-'}</span>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('detailModal').classList.remove('hidden');
+            document.getElementById('detailModal').classList.add('flex');
+        }
+
+        // 关闭详情弹窗
+        function closeDetailModal() {
+            document.getElementById('detailModal').classList.add('hidden');
+            document.getElementById('detailModal').classList.remove('flex');
+        }
+
+        // 导出
+        function handleExport() {
+            alert('导出功能开发中...');
+        }
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            renderTable();
+        });
+    </script>
+</body>
+</html>

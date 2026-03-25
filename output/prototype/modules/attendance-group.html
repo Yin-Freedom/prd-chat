@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>考勤组 - 考勤管理系统</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Plus Jakarta Sans', 'sans-serif'] },
+          colors: { primary: '#1a365d', accent: '#ed8936' }
+        }
+      }
+    }
+  </script>
+  <style>
+    .modal-overlay { background: rgba(0,0,0,0.5); }
+    .status-active { background: #dcfce7; color: #166534; }
+    .status-inactive { background: #fee2e2; color: #991b1b; }
+  </style>
+</head>
+<body class="font-sans bg-gray-50 min-h-screen p-6">
+  <!-- 页面标题 -->
+  <div class="mb-6">
+    <div class="flex items-center text-sm text-gray-500 mb-2">
+      <a href="../index.html" class="hover:text-primary"><i class="fas fa-home mr-1"></i>首页</a>
+      <i class="fas fa-chevron-right mx-2 text-xs"></i>
+      <span class="text-gray-700">考勤组管理</span>
+    </div>
+    <h1 class="text-2xl font-bold text-primary flex items-center">
+      <i class="fas fa-users-cog mr-3 text-accent"></i>考勤组管理
+    </h1>
+    <p class="text-gray-500 mt-1">设置不同考勤组方便管理，将员工按部门或岗位分组，为不同组设置不同的考勤规则和班次。</p>
+  </div>
+
+  <!-- 筛选区 -->
+  <div class="bg-white rounded-xl shadow-sm p-4 mb-4">
+    <div class="flex flex-wrap items-center gap-4">
+      <div class="flex-1 min-w-[200px]">
+        <label class="block text-sm font-medium text-gray-700 mb-1">关键词搜索</label>
+        <div class="relative">
+          <input type="text" id="searchKeyword" placeholder="考勤组名称" class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition">
+          <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+        </div>
+      </div>
+      <div class="w-40">
+        <label class="block text-sm font-medium text-gray-700 mb-1">状态</label>
+        <select id="searchStatus" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition">
+          <option value="">全部</option>
+          <option value="active">启用</option>
+          <option value="inactive">停用</option>
+        </select>
+      </div>
+      <div class="flex items-end gap-2 pt-5">
+        <button onclick="handleSearch()" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition flex items-center">
+          <i class="fas fa-search mr-2"></i>搜索
+        </button>
+        <button onclick="handleReset()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition flex items-center">
+          <i class="fas fa-redo mr-2"></i>重置
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 操作栏 -->
+  <div class="bg-white rounded-xl shadow-sm p-4 mb-4">
+    <div class="flex justify-between items-center">
+      <div class="flex gap-2">
+        <button onclick="openAddModal()" class="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent/90 transition flex items-center">
+          <i class="fas fa-plus mr-2"></i>新增考勤组
+        </button>
+        <button onclick="openImportModal()" class="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition flex items-center">
+          <i class="fas fa-file-import mr-2"></i>批量导入
+        </button>
+      </div>
+      <div class="text-sm text-gray-500">
+        共 <span id="totalCount" class="font-semibold text-primary">5</span> 条记录
+      </div>
+    </div>
+  </div>
+
+  <!-- 数据表格 -->
+  <div class="bg-white rounded-xl shadow-sm overflow-hidden mb-4">
+    <table class="w-full">
+      <thead class="bg-gray-50 border-b border-gray-200">
+        <tr>
+          <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700 w-16">序号</th>
+          <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">考勤组名称</th>
+          <th class="px-4 py-3 text-center text-sm font-semibold text-gray-700 w-24">关联人数</th>
+          <th class="px-4 py-3 text-center text-sm font-semibold text-gray-700 w-32">关联班次</th>
+          <th class="px-4 py-3 text-center text-sm font-semibold text-gray-700 w-40">创建时间</th>
+          <th class="px-4 py-3 text-center text-sm font-semibold text-gray-700 w-24">状态</th>
+          <th class="px-4 py-3 text-center text-sm font-semibold text-gray-700 w-40">操作</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody" class="divide-y divide-gray-100">
+        <!-- 动态生成 -->
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 分页 -->
+  <div class="bg-white rounded-xl shadow-sm p-4 flex justify-between items-center">
+    <div class="text-sm text-gray-500">
+      显示第 <span class="font-semibold text-primary">1</span> - <span class="font-semibold text-primary">5</span> 条，共 <span class="font-semibold text-primary">5</span> 条
+    </div>
+    <div class="flex items-center gap-2">
+      <button class="px-3 py-1 border border-gray-300 rounded text-gray-400 cursor-not-allowed" disabled>
+        <i class="fas fa-chevron-left"></i>
+      </button>
+      <button class="px-3 py-1 bg-primary text-white rounded">1</button>
+      <button class="px-3 py-1 border border-gray-300 rounded text-gray-700 hover:bg-gray-50">2</button>
+      <button class="px-3 py-1 border border-gray-300 rounded text-gray-700 hover:bg-gray-50">3</button>
+      <button class="px-3 py-1 border border-gray-300 rounded text-gray-700 hover:bg-gray-50">
+        <i class="fas fa-chevron-right"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- 新增/编辑弹窗 -->
+  <div id="formModal" class="fixed inset-0 modal-overlay z-50 hidden items-center justify-center">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 max-h-[90vh] overflow-hidden">
+      <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-primary text-white rounded-t-2xl">
+        <h3 id="formModalTitle" class="text-lg font-semibold flex items-center">
+          <i class="fas fa-plus-circle mr-2"></i>新增考勤组
+        </h3>
+        <button onclick="closeFormModal()" class="text-white/80 hover:text-white transition">
+          <i class="fas fa-times text-xl"></i>
+        </button>
+      </div>
+      <form id="attendanceGroupForm" class="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
+        <input type="hidden" id="formId">
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+              考勤组名称 <span class="text-red-500">*</span>
+            </label>
+            <input type="text" id="formName" required placeholder="请输入考勤组名称" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">描述</label>
+            <textarea id="formDescription" rows="2" placeholder="请输入描述" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition resize-none"></textarea>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+              关联班次 <span class="text-red-500">*</span>
+            </label>
+            <select id="formShift" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition">
+              <option value="">请选择班次</option>
+              <option value="standard">标准班次 (09:00-18:00)</option>
+              <option value="flexible">弹性班次 (核心时间10:00-16:00)</option>
+              <option value="shift">轮班班次 (三班倒)</option>
+              <option value="night">夜班班次 (22:00-06:00)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">关联人员</label>
+            <div class="border border-gray-300 rounded-lg p-3 bg-gray-50">
+              <div class="flex flex-wrap gap-2 mb-2" id="selectedMembers">
+                <span class="inline-flex items-center px-3 py-1 bg-primary/10 text-primary rounded-full text-sm">
+                  研发部(全体)
+                  <button type="button" onclick="removeMember(this)" class="ml-2 hover:text-red-500"><i class="fas fa-times"></i></button>
+                </span>
+              </div>
+              <button type="button" onclick="openMemberSelect()" class="text-primary hover:text-primary/80 text-sm flex items-center">
+                <i class="fas fa-plus mr-1"></i>添加人员/部门
+              </button>
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">状态</label>
+            <div class="flex items-center gap-4">
+              <label class="flex items-center cursor-pointer">
+                <input type="radio" name="formStatus" value="active" checked class="mr-2 accent-primary">
+                <span class="text-gray-700">启用</span>
+              </label>
+              <label class="flex items-center cursor-pointer">
+                <input type="radio" name="formStatus" value="inactive" class="mr-2 accent-primary">
+                <span class="text-gray-700">停用</span>
+              </label>
+            </div>
+          </div>
+        </div>
+        <div class="mt-6 flex justify-end gap-3">
+          <button type="button" onclick="closeFormModal()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition">取消</button>
+          <button type="submit" class="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition">保存</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 详情弹窗 -->
+  <div id="detailModal" class="fixed inset-0 modal-overlay z-50 hidden items-center justify-center">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4">
+      <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50 rounded-t-2xl">
+        <h3 class="text-lg font-semibold text-primary flex items-center">
+          <i class="fas fa-info-circle mr-2 text-accent"></i>考勤组详情
+        </h3>
+        <button onclick="closeDetailModal()" class="text-gray-400 hover:text-gray-600 transition">
+          <i class="fas fa-times text-xl"></i>
+        </button>
+      </div>
+      <div class="p-6" id="detailContent">
+        <!-- 动态生成 -->
+      </div>
+      <div class="px-6 py-4 border-t border-gray-200 flex justify-end">
+        <button onclick="closeDetailModal()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 删除确认弹窗 -->
+  <div id="deleteModal" class="fixed inset-0 modal-overlay z-50 hidden items-center justify-center">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4">
+      <div class="p-6 text-center">
+        <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <i class="fas fa-exclamation-triangle text-3xl text-red-500"></i>
+        </div>
+        <h3 class="text-lg font-semibold text-gray-900 mb-2">确认删除</h3>
+        <p class="text-gray-500 mb-6">确定要删除考勤组 "<span id="deleteName" class="font-semibold text-gray-700"></span>" 吗？此操作不可恢复。</p>
+        <div class="flex justify-center gap-3">
+          <button onclick="closeDeleteModal()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition">取消</button>
+          <button onclick="confirmDelete()" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition">确认删除</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 导入弹窗 -->
+  <div id="importModal" class="fixed inset-0 modal-overlay z-50 hidden items-center justify-center">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4">
+      <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50 rounded-t-2xl">
+        <h3 class="text-lg font-semibold text-primary flex items-center">
+          <i class="fas fa-file-import mr-2 text-accent"></i>批量导入考勤组
+        </h3>
+        <button onclick="closeImportModal()" class="text-gray-400 hover:text-gray-600 transition">
+          <i class="fas fa-times text-xl"></i>
+        </button>
+      </div>
+      <div class="p-6">
+        <div class="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-primary transition cursor-pointer" onclick="document.getElementById('importFile').click()">
+          <input type="file" id="importFile" accept=".xlsx,.xls,.csv" class="hidden" onchange="handleFileSelect(this)">
+          <div class="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+            <i class="fas fa-cloud-upload-alt text-3xl text-primary"></i>
+          </div>
+          <p class="text-gray-700 font-medium mb-1">点击或拖拽文件到此区域上传</p>
+          <p class="text-gray-400 text-sm">支持 .xlsx, .xls, .csv 格式</p>
+        </div>
+        <div id="importFileName" class="mt-3 text-sm text-gray-600 hidden">
+          <i class="fas fa-file-excel text-green-500 mr-2"></i><span></span>
+        </div>
+        <div class="mt-4 p-3 bg-blue-50 rounded-lg">
+          <p class="text-sm text-blue-700 flex items-center">
+            <i class="fas fa-info-circle mr-2"></i>
+            请先下载模板文件，按格式填写后上传
+          </p>
+        </div>
+        <div class="mt-6 flex justify-between">
+          <button onclick="downloadTemplate()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition flex items-center">
+            <i class="fas fa-download mr-2"></i>下载模板
+          </button>
+          <div class="flex gap-3">
+            <button onclick="closeImportModal()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition">取消</button>
+            <button onclick="handleImport()" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition">导入</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 模拟数据
+    let attendanceGroups = [
+      { id: 1, name: '研发部考勤组', description: '研发部门标准考勤组', shift: 'standard', shiftName: '标准班次', memberCount: 50, members: ['研发部(全体)'], status: 'active', createdAt: '2024-01-15 10:30:00' },
+      { id: 2, name: '销售部考勤组', description: '销售部门弹性工作制', shift: 'flexible', shiftName: '弹性班次', memberCount: 30, members: ['销售部(全体)'], status: 'active', createdAt: '2024-01-16 14:20:00' },
+      { id: 3, name: '运营部考勤组', description: '运营部门轮班制度', shift: 'shift', shiftName: '轮班班次', memberCount: 25, members: ['运营部(全体)'], status: 'active', createdAt: '2024-01-17 09:15:00' },
+      { id: 4, name: '行政部考勤组', description: '行政部门标准工作时间', shift: 'standard', shiftName: '标准班次', memberCount: 10, members: ['行政部(全体)'], status: 'inactive', createdAt: '2024-01-18 16:45:00' },
+      { id: 5, name: '客服部考勤组', description: '客服部门三班倒制度', shift: 'shift', shiftName: '轮班班次', memberCount: 40, members: ['客服部(全体)'], status: 'active', createdAt: '2024-01-19 11:00:00' }
+    ];
+
+    let deleteId = null;
+
+    // 初始化
+    document.addEventListener('DOMContentLoaded', function() {
+      renderTable();
+    });
+
+    // 渲染表格
+    function renderTable(data = attendanceGroups) {
+      const tbody = document.getElementById('tableBody');
+      tbody.innerHTML = data.map((item, index) => `
+        <tr class="hover:bg-gray-50 transition cursor-pointer" onclick="viewDetail(${item.id})">
+          <td class="px-4 py-3 text-sm text-gray-500">${index + 1}</td>
+          <td class="px-4 py-3">
+            <div class="font-medium text-gray-900">${item.name}</div>
+            <div class="text-sm text-gray-500">${item.description || '-'}</div>
+          </td>
+          <td class="px-4 py-3 text-center">
+            <span class="inline-flex items-center px-2.5 py-0.5 bg-primary/10 text-primary rounded-full text-sm font-medium">
+              <i class="fas fa-user mr-1 text-xs"></i>${item.memberCount}人
+            </span>
+          </td>
+          <td class="px-4 py-3 text-center text-sm text-gray-700">${item.shiftName}</td>
+          <td class="px-4 py-3 text-center text-sm text-gray-500">${item.createdAt}</td>
+          <td class="px-4 py-3 text-center">
+            <span class="px-2.5 py-1 rounded-full text-xs font-medium ${item.status === 'active' ? 'status-active' : 'status-inactive'}">
+              ${item.status === 'active' ? '启用' : '停用'}
+            </span>
+          </td>
+          <td class="px-4 py-3 text-center" onclick="event.stopPropagation()">
+            <div class="flex justify-center gap-1">
+              <button onclick="viewDetail(${item.id})" class="p-2 text-gray-500 hover:text-primary hover:bg-primary/10 rounded-lg transition" title="查看详情">
+                <i class="fas fa-eye"></i>
+              </button>
+              <button onclick="openEditModal(${item.id})" class="p-2 text-gray-500 hover:text-accent hover:bg-accent/10 rounded-lg transition" title="编辑">
+                <i class="fas fa-edit"></i>
+              </button>
+              <button onclick="openDeleteModal(${item.id})" class="p-2 text-gray-500 hover:text-red-500 hover:bg-red-50 rounded-lg transition" title="删除">
+                <i class="fas fa-trash"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+      `).join('');
+      document.getElementById('totalCount').textContent = data.length;
+    }
+
+    // 搜索
+    function handleSearch() {
+      const keyword = document.getElementById('searchKeyword').value.toLowerCase();
+      const status = document.getElementById('searchStatus').value;
+      const filtered = attendanceGroups.filter(item => {
+        const matchKeyword = !keyword || item.name.toLowerCase().includes(keyword);
+        const matchStatus = !status || item.status === status;
+        return matchKeyword && matchStatus;
+      });
+      renderTable(filtered);
+    }
+
+    // 重置
+    function handleReset() {
+      document.getElementById('searchKeyword').value = '';
+      document.getElementById('searchStatus').value = '';
+      renderTable();
+    }
+
+    // 打开新增弹窗
+    function openAddModal() {
+      document.getElementById('formModalTitle').innerHTML = '<i class="fas fa-plus-circle mr-2"></i>新增考勤组';
+      document.getElementById('attendanceGroupForm').reset();
+      document.getElementById('formId').value = '';
+      document.getElementById('selectedMembers').innerHTML = '';
+      document.querySelector('input[name="formStatus"][value="active"]').checked = true;
+      openModal('formModal');
+    }
+
+    // 打开编辑弹窗
+    function openEditModal(id) {
+      const item = attendanceGroups.find(g => g.id === id);
+      if (!item) return;
+      document.getElementById('formModalTitle').innerHTML = '<i class="fas fa-edit mr-2"></i>编辑考勤组';
+      document.getElementById('formId').value = item.id;
+      document.getElementById('formName').value = item.name;
+      document.getElementById('formDescription').value = item.description || '';
+      document.getElementById('formShift').value = item.shift;
+      document.querySelector(`input[name="formStatus"][value="${item.status}"]`).checked = true;
+      document.getElementById('selectedMembers').innerHTML = item.members.map(m => `
+        <span class="inline-flex items-center px-3 py-1 bg-primary/10 text-primary rounded-full text-sm">
+          ${m}
+          <button type="button" onclick="removeMember(this)" class="ml-2 hover:text-red-500"><i class="fas fa-times"></i></button>
+        </span>
+      `).join('');
+      openModal('formModal');
+    }
+
+    // 表单提交
+    document.getElementById('attendanceGroupForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const id = document.getElementById('formId').value;
+      const name = document.getElementById('formName').value;
+      const description = document.getElementById('formDescription').value;
+      const shift = document.getElementById('formShift').value;
+      const status = document.querySelector('input[name="formStatus"]:checked').value;
+      const shiftNames = { standard: '标准班次', flexible: '弹性班次', shift: '轮班班次', night: '夜班班次' };
+
+      if (id) {
+        // 编辑
+        const index = attendanceGroups.findIndex(g => g.id === parseInt(id));
+        if (index !== -1) {
+          attendanceGroups[index] = { ...attendanceGroups[index], name, description, shift, shiftName: shiftNames[shift], status };
+        }
+      } else {
+        // 新增
+        const newItem = {
+          id: Date.now(),
+          name,
+          description,
+          shift,
+          shiftName: shiftNames[shift],
+          memberCount: 0,
+          members: [],
+          status,
+          createdAt: new Date().toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\//g, '-')
+        };
+        attendanceGroups.unshift(newItem);
+      }
+      closeFormModal();
+      renderTable();
+    });
+
+    // 查看详情
+    function viewDetail(id) {
+      const item = attendanceGroups.find(g => g.id === id);
+      if (!item) return;
+      document.getElementById('detailContent').innerHTML = `
+        <div class="space-y-4">
+          <div class="flex items-center justify-between pb-4 border-b border-gray-100">
+            <h4 class="text-xl font-semibold text-gray-900">${item.name}</h4>
+            <span class="px-3 py-1 rounded-full text-sm font-medium ${item.status === 'active' ? 'status-active' : 'status-inactive'}">
+              ${item.status === 'active' ? '启用' : '停用'}
+            </span>
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="text-sm text-gray-500">关联班次</label>
+              <p class="font-medium text-gray-900">${item.shiftName}</p>
+            </div>
+            <div>
+              <label class="text-sm text-gray-500">关联人数</label>
+              <p class="font-medium text-gray-900">${item.memberCount}人</p>
+            </div>
+            <div>
+              <label class="text-sm text-gray-500">创建时间</label>
+              <p class="font-medium text-gray-900">${item.createdAt}</p>
+            </div>
+          </div>
+          <div>
+            <label class="text-sm text-gray-500">描述</label>
+            <p class="font-medium text-gray-900">${item.description || '-'}</p>
+          </div>
+          <div>
+            <label class="text-sm text-gray-500 mb-2 block">关联人员/部门</label>
+            <div class="flex flex-wrap gap-2">
+              ${item.members.map(m => `<span class="px-3 py-1 bg-primary/10 text-primary rounded-full text-sm">${m}</span>`).join('') || '<span class="text-gray-400">暂无</span>'}
+            </div>
+          </div>
+        </div>
+      `;
+      openModal('detailModal');
+    }
+
+    // 打开删除确认弹窗
+    function openDeleteModal(id) {
+      const item = attendanceGroups.find(g => g.id === id);
+      if (!item) return;
+      deleteId = id;
+      document.getElementById('deleteName').textContent = item.name;
+      openModal('deleteModal');
+    }
+
+    // 确认删除
+    function confirmDelete() {
+      if (deleteId) {
+        attendanceGroups = attendanceGroups.filter(g => g.id !== deleteId);
+        deleteId = null;
+        closeDeleteModal();
+        renderTable();
+      }
+    }
+
+    // 打开导入弹窗
+    function openImportModal() {
+      document.getElementById('importFile').value = '';
+      document.getElementById('importFileName').classList.add('hidden');
+      openModal('importModal');
+    }
+
+    // 文件选择
+    function handleFileSelect(input) {
+      if (input.files.length > 0) {
+        const fileName = document.getElementById('importFileName');
+        fileName.querySelector('span').textContent = input.files[0].name;
+        fileName.classList.remove('hidden');
+      }
+    }
+
+    // 下载模板
+    function downloadTemplate() {
+      alert('模板下载功能：实际项目中会下载考勤组导入模板文件');
+    }
+
+    // 导入
+    function handleImport() {
+      const file = document.getElementById('importFile').files[0];
+      if (!file) {
+        alert('请选择要导入的文件');
+        return;
+      }
+      alert('导入成功！实际项目中会解析文件并导入数据');
+      closeImportModal();
+    }
+
+    // 移除关联人员
+    function removeMember(btn) {
+      btn.parentElement.remove();
+    }
+
+    // 打开人员选择
+    function openMemberSelect() {
+      alert('人员选择功能：实际项目中会打开人员/部门选择器');
+    }
+
+    // 弹窗控制
+    function openModal(id) {
+      const modal = document.getElementById(id);
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeFormModal() {
+      const modal = document.getElementById('formModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function closeDetailModal() {
+      const modal = document.getElementById('detailModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function closeDeleteModal() {
+      const modal = document.getElementById('deleteModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+      deleteId = null;
+    }
+
+    function closeImportModal() {
+      const modal = document.getElementById('importModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    // 点击遮罩关闭弹窗
+    document.querySelectorAll('.modal-overlay').forEach(modal => {
+      modal.addEventListener('click', function(e) {
+        if (e.target === this) {
+          this.classList.add('hidden');
+          this.classList.remove('flex');
+        }
+      });
+    });
+  </script>
+</body>
+</html>

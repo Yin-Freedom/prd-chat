@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>考勤管理系统</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Plus Jakarta Sans', 'sans-serif'] },
+          colors: { primary: '#1a365d', secondary: '#2d3748', accent: '#ed8936' }
+        }
+      }
+    }
+  </script>
+  <style>
+    html, body, .iframe-container, iframe { height: 100%; margin: 0; padding: 0; }
+    .nav-item.active { background-color: rgba(26, 54, 93, 0.1); color: #1a365d; font-weight: 500; }
+  </style>
+</head>
+<body class="font-sans bg-gray-50">
+  <!-- 顶部导航 -->
+  <header class="bg-white border-b border-gray-200 sticky top-0 z-30 h-16">
+    <div class="flex items-center justify-between px-6 h-full">
+      <div class="flex items-center gap-4">
+        <h1 class="text-xl font-bold text-primary">考勤管理系统</h1>
+      </div>
+      <div class="flex items-center gap-4">
+        <button class="relative">
+          <i class="fas fa-bell text-gray-500"></i>
+          <span class="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+        </button>
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-white">
+            <i class="fas fa-user text-sm"></i>
+          </div>
+          <span class="text-sm font-medium">管理员</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="flex" style="height: calc(100vh - 64px);">
+    <!-- 侧边栏导航 -->
+    <aside class="w-64 bg-white border-r border-gray-200 flex-shrink-0 overflow-y-auto">
+      <nav class="p-4">
+        <ul class="space-y-1">
+          <li>
+            <a href="dashboard.html" target="content-frame" class="nav-item flex items-center gap-3 px-4 py-2.5 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors" data-page="dashboard">
+              <i class="fas fa-home"></i>
+              <span>首页</span>
+            </a>
+          </li>
+          <li>
+            <a href="modules/attendance-group.html" target="content-frame" class="nav-item flex items-center gap-3 px-4 py-2.5 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors" data-page="attendance-group">
+              <i class="fas fa-layer-group"></i>
+              <span>考勤组</span>
+            </a>
+          </li>
+          <li>
+            <a href="modules/shift-management.html" target="content-frame" class="nav-item flex items-center gap-3 px-4 py-2.5 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors" data-page="shift-management">
+              <i class="fas fa-clock"></i>
+              <span>班次管理</span>
+            </a>
+          </li>
+          <li>
+            <a href="modules/clock-record.html" target="content-frame" class="nav-item flex items-center gap-3 px-4 py-2.5 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors" data-page="clock-record">
+              <i class="fas fa-fingerprint"></i>
+              <span>打卡记录</span>
+            </a>
+          </li>
+          <li>
+            <a href="modules/leave-management.html" target="content-frame" class="nav-item flex items-center gap-3 px-4 py-2.5 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors" data-page="leave-management">
+              <i class="fas fa-calendar-minus"></i>
+              <span>请假管理</span>
+            </a>
+          </li>
+          <li>
+            <a href="modules/attendance-report.html" target="content-frame" class="nav-item flex items-center gap-3 px-4 py-2.5 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors" data-page="attendance-report">
+              <i class="fas fa-chart-bar"></i>
+              <span>考勤报表</span>
+            </a>
+          </li>
+        </ul>
+      </nav>
+    </aside>
+
+    <!-- 主内容区 - iframe容器 -->
+    <main class="flex-1 iframe-container bg-gray-50">
+      <iframe id="content-frame" name="content-frame" src="dashboard.html"
+        class="w-full border-0" style="height: 100%;"
+        onload="this.style.height=(window.innerHeight-64)+'px'">
+      </iframe>
+    </main>
+  </div>
+
+  <script>
+    // 导航高亮切换
+    document.querySelectorAll('.nav-item').forEach(item => {
+      item.addEventListener('click', function() {
+        document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+        this.classList.add('active');
+      });
+    });
+    // 默认高亮首页
+    document.querySelector('[data-page="dashboard"]').classList.add('active');
+  </script>
+</body>
+</html>

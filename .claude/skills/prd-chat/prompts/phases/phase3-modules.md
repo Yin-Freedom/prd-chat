@@ -174,24 +174,75 @@
 
 ## 数据结构
 
+**重要：每个模块必须保存完整的五个维度信息**
+
 ```json
 {
   "modules": [
     {
       "id": "M01",
       "name": "模块名称",
+      "index": 1,
       "overview": {
         "description": "模块描述",
         "purpose": "主要用途",
         "targetRoles": ["角色"]
       },
-      "functions": [...],
-      "businessLogic": [...],
-      "constraints": [...]
+      "functions": [
+        {
+          "id": "F01-01",
+          "name": "功能名称",
+          "type": "新增/查询/修改/删除",
+          "role": "操作角色",
+          "priority": "高/中/低",
+          "details": {
+            "precondition": "前置条件",
+            "inputs": [
+              {"name": "字段名", "type": "字段类型", "required": true, "validation": "校验规则", "default": "默认值", "description": "说明"}
+            ],
+            "outputs": "输出结果",
+            "process": "操作流程"
+          }
+        }
+      ],
+      "businessLogic": [
+        {
+          "id": "BL01-01",
+          "name": "规则名称",
+          "type": "计算规则/状态转换/触发条件/数据联动/校验规则/其他",
+          "trigger": "触发条件",
+          "logic": "处理逻辑"
+        }
+      ],
+      "constraints": [
+        {
+          "id": "C01-01",
+          "type": "唯一性/格式/范围/必填/关联/操作限制/其他",
+          "target": "约束对象",
+          "description": "约束描述",
+          "errorMessage": "错误提示"
+        }
+      ]
     }
   ]
 }
 ```
+
+**字段说明**：
+- `id`: 模块唯一标识，格式为 M01, M02, M03...
+- `name`: 模块名称
+- `index`: 模块序号（从1开始），用于Agent并行生成时确定章节编号
+
+**保存检查清单**：
+- [ ] 模块序号（index）- 从1开始递增
+- [ ] 模块概述（overview）- 必须包含description、purpose、targetRoles
+- [ ] 功能清单（functions）- 至少包含id、name、type、role、priority
+- [ ] 功能详情（functions[].details）- 包含precondition、inputs、outputs、process
+- [ ] 业务逻辑（businessLogic）- 至少包含id、name、type、trigger、logic
+- [ ] 约束条件（constraints）- 至少包含id、type、target、description、errorMessage
+
+**Agent并行生成支持**：
+每个模块数据是独立的，可以完整传递给单个Agent处理。模块序号(index)确保多Agent并行时章节编号正确。
 
 ## 注意事项
 

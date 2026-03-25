@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>考勤报表 - 考勤管理系统</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Plus Jakarta Sans', 'sans-serif'] },
+          colors: { primary: '#1a365d', secondary: '#2d3748', accent: '#ed8936' }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="font-sans bg-gray-50 min-h-screen p-6">
+  <!-- 页面标题 -->
+  <div class="mb-6">
+    <h2 class="text-2xl font-bold text-gray-900">考勤报表</h2>
+    <p class="text-gray-500 mt-1">生成各类考勤统计报表，支持按部门、人员、时间段等维度统计</p>
+  </div>
+
+  <!-- Tab切换 -->
+  <div class="bg-white rounded-xl border border-gray-200 mb-4">
+    <div class="flex border-b border-gray-200">
+      <button onclick="switchTab('daily')" id="tab-daily" class="tab-btn px-6 py-3 text-sm font-medium text-primary border-b-2 border-primary bg-primary/5">
+        <i class="fas fa-calendar-day mr-2"></i>考勤日报
+      </button>
+      <button onclick="switchTab('monthly')" id="tab-monthly" class="tab-btn px-6 py-3 text-sm font-medium text-gray-500 hover:text-gray-700 border-b-2 border-transparent">
+        <i class="fas fa-calendar-alt mr-2"></i>考勤月报
+      </button>
+      <button onclick="switchTab('abnormal')" id="tab-abnormal" class="tab-btn px-6 py-3 text-sm font-medium text-gray-500 hover:text-gray-700 border-b-2 border-transparent">
+        <i class="fas fa-exclamation-triangle mr-2"></i>异常统计
+      </button>
+      <button onclick="switchTab('leave')" id="tab-leave" class="tab-btn px-6 py-3 text-sm font-medium text-gray-500 hover:text-gray-700 border-b-2 border-transparent">
+        <i class="fas fa-user-clock mr-2"></i>请假统计
+      </button>
+    </div>
+
+    <!-- 筛选区 -->
+    <div class="p-4">
+      <div class="flex flex-wrap gap-4">
+        <div class="w-48">
+          <label class="block text-sm font-medium text-gray-700 mb-1">部门</label>
+          <select id="filter-dept" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none">
+            <option value="">全部部门</option>
+            <option value="tech">技术部</option>
+            <option value="product">产品部</option>
+            <option value="operation">运营部</option>
+            <option value="hr">人力资源部</option>
+            <option value="finance">财务部</option>
+          </select>
+        </div>
+        <div class="w-56">
+          <label class="block text-sm font-medium text-gray-700 mb-1">日期范围</label>
+          <div class="flex items-center gap-2">
+            <input type="date" id="filter-start" class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-sm" value="2024-03-01">
+            <span class="text-gray-400">至</span>
+            <input type="date" id="filter-end" class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-sm" value="2024-03-31">
+          </div>
+        </div>
+        <div class="w-48">
+          <label class="block text-sm font-medium text-gray-700 mb-1">考勤组</label>
+          <select id="filter-group" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none">
+            <option value="">全部考勤组</option>
+            <option value="standard">标准班次</option>
+            <option value="flexible">弹性班次</option>
+            <option value="shift">轮班制</option>
+          </select>
+        </div>
+        <div class="flex items-end gap-2">
+          <button onclick="queryData()" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+            <i class="fas fa-search mr-2"></i>查询
+          </button>
+          <button onclick="resetFilter()" class="px-4 py-2 border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors">
+            重置
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 统计卡片 -->
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+    <div class="bg-white rounded-xl border border-gray-200 p-5">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm text-gray-500">出勤率</p>
+          <p class="text-2xl font-bold text-gray-900 mt-1" id="stat-rate">96.8%</p>
+        </div>
+        <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+          <i class="fas fa-check-circle text-green-500 text-xl"></i>
+        </div>
+      </div>
+      <p class="text-sm text-green-500 mt-2"><i class="fas fa-arrow-up mr-1"></i>2.3% 较上月</p>
+    </div>
+    <div class="bg-white rounded-xl border border-gray-200 p-5">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm text-gray-500">迟到人数</p>
+          <p class="text-2xl font-bold text-gray-900 mt-1" id="stat-late">12</p>
+        </div>
+        <div class="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+          <i class="fas fa-clock text-orange-500 text-xl"></i>
+        </div>
+      </div>
+      <p class="text-sm text-red-500 mt-2"><i class="fas fa-arrow-up mr-1"></i>3人 较昨日</p>
+    </div>
+    <div class="bg-white rounded-xl border border-gray-200 p-5">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm text-gray-500">早退人数</p>
+          <p class="text-2xl font-bold text-gray-900 mt-1" id="stat-early">5</p>
+        </div>
+        <div class="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
+          <i class="fas fa-sign-out-alt text-yellow-500 text-xl"></i>
+        </div>
+      </div>
+      <p class="text-sm text-green-500 mt-2"><i class="fas fa-arrow-down mr-1"></i>2人 较昨日</p>
+    </div>
+    <div class="bg-white rounded-xl border border-gray-200 p-5">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm text-gray-500">请假人数</p>
+          <p class="text-2xl font-bold text-gray-900 mt-1" id="stat-leave">8</p>
+        </div>
+        <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+          <i class="fas fa-calendar-times text-blue-500 text-xl"></i>
+        </div>
+      </div>
+      <p class="text-sm text-gray-500 mt-2"><i class="fas fa-minus mr-1"></i>持平 较昨日</p>
+    </div>
+  </div>
+
+  <!-- 操作栏 -->
+  <div class="flex justify-between items-center mb-4">
+    <div class="text-sm text-gray-500">
+      <span>数据更新时间：2024-03-25 09:30:00</span>
+    </div>
+    <div class="flex gap-2">
+      <button onclick="openCustomReport()" class="px-4 py-2 border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors">
+        <i class="fas fa-cog mr-2"></i>自定义报表
+      </button>
+      <button onclick="exportReport()" class="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent/90 transition-colors">
+        <i class="fas fa-download mr-2"></i>导出报表
+      </button>
+    </div>
+  </div>
+
+  <!-- 数据表格 - 日报 -->
+  <div id="table-daily" class="table-container bg-white rounded-xl border border-gray-200 overflow-hidden">
+    <table class="w-full">
+      <thead class="bg-gray-50 border-b border-gray-200">
+        <tr>
+          <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">序号</th>
+          <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">员工姓名</th>
+          <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">工号</th>
+          <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">部门</th>
+          <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">上班时间</th>
+          <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">下班时间</th>
+          <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">工作时长</th>
+          <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">状态</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        <tr class="hover:bg-gray-50 transition-colors">
+          <td class="px-4 py-3 text-sm text-gray-900">1</td>
+          <td class="px-4 py-3 text-sm text-gray-900">张三</td>
+          <td class="px-4 py-3 text-sm text-gray-500">EMP001</td>
+          <td class="px-4 py-3 text-sm text-gray-500">技术部</td>
+          <td class="px-4 py-3 text-sm text-gray-500">09:00</td>
+          <td class="px-4 py-3 text-sm text-gray-500">18:30</td>
+          <td class="px-4 py-3 text-sm text-gray-500">9.5h</td>
+          <td class="px-4 py-3"><span class="px-2 py-1 bg-green-100 text-green-700 rounded text-xs">正常</span></td>
+        </tr>
+        <tr class="hover:bg-gray-50 transition-colors">
+          <td class="px-4 py-3 text-sm text-gray-900">2</td>
+          <td class="px-4 py-3 text-sm text-gray-900">李四</td>
+          <td class="px-4 py-3 text-sm text-gray-500">EMP002</td>
+          <td class="px-4 py-3 text-sm text-gray-500">产品部</td>
+          <td class="px-4 py-3 text-sm text-gray-500">09:15</td>
+          <td class="px-4 py-3 text-sm text-gray-500">18:00</td>
+          <td class="px-4 py-3 text-sm text-gray-500">8.75h</td>
+          <td class="px-4 py-3"><span class="px-2 py-1 bg-orange-100 text-orange-700 rounded text-xs">迟到</span></td>
+        </tr>
+        <tr class="hover:bg-gray-50 transition-colors">
+          <td class="px-4 py-3 text-sm text-gray-900">3</td>
+          <td class="px-4 py-3 text-sm text-gray-900">王五</td>
+          <td class="px-4 py-3 text-sm text-gray-500">EMP003</td>
+          <td class="px-4 py-3 text-sm text-gray-500">运营部</td>
+          <td class="px-4 py-3 text-sm text-gray-500">08:55</td>
+          <td class="px-4 py-3 text-sm text-gray-500">17:30</td>
+          <td class="px-4 py-3 text-sm text-gray-500">8.58h</td>
+          <td class="px-4 py-3"><span class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-xs">早退</span></td>
+        </tr>
+        <tr class="hover:bg-gray-50 transition-colors">
+          <td class="px-4 py-3 text-sm text-gray-900">4</td>
+          <td class="px-4 py-3 text-sm text-gray-900">赵六</td>
+          <td class="px-4 py-3 text-sm text-gray-500">EMP004</td>
+          <td class="px-4 py-3 text-sm text-gray-500">人力资源部</td>
+          <td class="px-4 py-3 text-sm text-gray-500">--</td>
+          <td class="px-4 py-3 text-sm text-gray-500">--</td>
+          <td class="px-4 py-3 text-sm text-gray-500">--</td>
+          <td class="px-4 py-3"><span class="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs">请假</span></td>
+        </tr>
+        <tr class="hover:bg-gray-50 transition-colors">
+          <td class="px-4 py-3 text-sm text-gray-900">5</td>
+          <td class="px-4 py-3 text-sm text-gray-900">孙七</td>
+          <td class="px-4 py-3 text-sm text-gray-500">EMP005</td>
+          <td class="px-4 py-3 text-sm text-gray-500">财务部</td>
+          <td class="px-4 py-3 text-sm text-gray-500">09:00</td>
+          <td class="px-4 py-3 text-sm text-gray-500">18:00</td>
+          <td class="px-4 py-3 text-sm text-gray-500">9h</td>
+          <td class="px-4 py-3"><span class="px-2 py-1 bg-green-100 text-green-700 rounded text-xs">正常</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 数据表格 - 月报 -->
+  <div id="table-monthly" class="table-container bg-white rounded-xl border border-gray-200 overflow-hidden hidden">
+    <table class="w-full">
+      <thead class="bg-gray-50 border-b border-gray-200">
+        <tr>
+          <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">序号</th>
+          <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">员工姓名</th>
+          <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">工号</th>
+          <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">部门</th>
+          <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">应出勤天数</th>
+          <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">实际出勤</th>
+          <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">迟到次数</th>
+          <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">早退次数</th>
+          <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">请假天数</th>
+          <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">出勤率</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        <tr class="hover:bg-gray-50 transition-colors">
+          <td class="px-4 py-3 text-sm text-gray-900">1</td>
+          <td class="px-4 py-3 text-sm text-gray-900">张三</td>
+          <td class="px-4 py-3 text-sm text-gray-500">EMP001</td>
+          <td class="px-4 py-3 text-sm text-gray-500">技术部</td>
+          <td class="px-4 py-3 text-sm text-gray-500">22</td>
+          <td class="px-4 py-3 text-sm text-gray-500">21</td>
+          <td class="px-4 py-3 text-sm text-gray-500">1</td>
+          <td class="px-4 py-3 text-sm text-gray-500">0</td>
+          <td class="px-4 py-3 text-sm text-gray-500">1</td>
+          <td class="px-4 py-3"><span class="px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-medium">95.5%</span></td>
+        </tr>
+        <tr class="hover:bg-gray-50 transition-colors">
+          <td class="px-4 py-3 text-sm text-gray-900">2</td>
+          <td class="px-4 py-3 text-sm text-gray-900">李四</td>
+          <td class="px-4 py-3 text-sm text-gray-500">EMP002</td>
+          <td class="px-4 py-3 text-sm text-gray-500">产品部</td>
+          <td class="px-4 py-3 text-sm text-gray-500">22</td>
+          <td class="px-4 py-3 text-sm text-gray-500">20</td>
+          <td class="px-4 py-3 text-sm text-gray-500">3</td>
+          <td class="px-4 py-3 text-sm text-gray-500">1</td>
+          <td class="px-4 py-3 text-sm text-gray-500">2</td>
+          <td class="px-4 py-3"><span class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-xs font-medium">90.9%</span></td>
+        </tr>
+        <tr class="hover:bg-gray-50 transition-colors">
+          <td class="px-4 py-3 text-sm text-gray-900">3</td>
+          <td class="px-4 py-3 text-sm text-gray-900">王五</td>
+          <td class="px-4 py-3 text-sm text-gray-500">EMP003</td>
+          <td class="px-4 py-3 text-sm text-gray-500">运营部</td>
+          <td class="px-4 py-3 text-sm text-gray-500">22</td>
+          <td class="px-4 py-3 text-sm text-gray-500">22</td>
+          <td class="px-4 py-3 text-sm text-gray-500">0</td>
+          <td class="px-4 py-3 text-sm text-gray-500">0</td>
+          <td class="px-4 py-3 text-sm text-gray-500">0</td>
+          <td class="px-4 py-3"><span class="px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-medium">100%</span></td>
+        </tr>
+        <tr class="hover:bg-gray-50 transition-colors">
+          <td class="px-4 py-3 text-sm text-gray-900">4</td>
+          <td class="px-4 py-3 text-sm text-gray-900">赵六</td>
+          <td class="px-4 py-3 text-sm text-gray-500">EMP004</td>
+          <td class="px-4 py-3 text-sm text-gray-500">人力资源部</td>
+          <td class="px-4 py-3 text-sm text-gray-500">22</td>
+          <td class="px-4 py-3 text-sm text-gray-500">18</td>
+          <td class="px-4 py-3 text-sm text-gray-500">2</td>
+          <td class="px-4 py-3 text-sm text-gray-500">0</td>
+          <td class="px-4 py-3 text-sm text-gray-500">4</td>
+          <td class="px-4 py-3"><span class="px-2 py-1 bg-orange-100 text-orange-700 rounded text-xs font-medium">81.8%</span></td>
+        </tr>
+        <tr class="hover:bg-gray-50 transition-colors">
+          <td class="px-4 py-3 text-sm text-gray-900">5</td>
+          <td class="px-4 py-3 text-sm text-gray-900">孙七</td>
+          <td class="px-4 py-3 text-sm text-gray-500">EMP005</td>
+          <td class="px-4 py-3 text-sm text-gray-500">财务部</td>
+          <td class="px-4 py-3 text-sm text-gray-500">22</td>
+          <td class="px-4 py-3 text-sm text-gray-500">22</td>
+          <td class="px-4 py-3 text-sm text-gray-500">0</td>
+          <td class="px-4 py-3 text-sm text-gray-500">0</td>
+          <td class="px-4 py-3 text-sm text-gray-500">0</td>
+          <td class="px-4 py-3"><span class="px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-medium">100%</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 数据表格 - 异常统计 -->
+  <div id="table-abnormal" class="table-container bg-white rounded-xl border border-gray-200 overflow-hidden hidden">
+    <table class="w-full">
+      <thead class="bg-gray-50 border-b border-gray-200">
+        <tr>
+          <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">序号</th>
+          <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">员工姓名</th>
+          <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">工号</th>
+          <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">部门</th>
+          <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">异常类型</th>
+          <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">异常日期</th>
+          <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">异常说明</th>
+          <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">处理状态</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        <tr class="hover:bg-gray-50 transition-colors">
+          <td class="px-4 py-3 text-sm text-gray-900">1</td>
+          <td class="px-4 py-3 text-sm text-gray-900">李四</td>
+          <td class="px-4 py-3 text-sm text-gray-500">EMP002</td>
+          <td class="px-4 py-3 text-sm text-gray-500">产品部</td>
+          <td class="px-4 py-3"><span class="px-2 py-1 bg-orange-100 text-orange-700 rounded text-xs">迟到</span></td>
+          <td class="px-4 py-3 text-sm text-gray-500">2024-03-25</td>
+          <td class="px-4 py-3 text-sm text-gray-500">上班迟到15分钟</td>
+          <td class="px-4 py-3"><span class="px-2 py-1 bg-green-100 text-green-700 rounded text-xs">已处理</span></td>
+        </tr>
+        <tr class="hover:bg-gray-50 transition-colors">
+          <td class="px-4 py-3 text-sm text-gray-900">2</td>
+          <td class="px-4 py-3 text-sm text-gray-900">王五</td>
+          <td class="px-4 py-3 text-sm text-gray-500">EMP003</td>
+          <td class="px-4 py-3 text-sm text-gray-500">运营部</td>
+          <td class="px-4 py-3"><span class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-xs">早退</span></td>
+          <td class="px-4 py-3 text-sm text-gray-500">2024-03-25</td>
+          <td class="px-4 py-3 text-sm text-gray-500">下班早退30分钟</td>
+          <td class="px-4 py-3"><span class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-xs">待处理</span></td>
+        </tr>
+        <tr class="hover:bg-gray-50 transition-colors">
+          <td class="px-4 py-3 text-sm text-gray-900">3</td>
+          <td class="px-4 py-3 text-sm text-gray-900">张三</td>
+          <td class="px-4 py-3 text-sm text-gray-500">EMP001</td>
+          <td class="px-4 py-3 text-sm text-gray-500">技术部</td>
+          <td class="px-4 py-3"><span class="px-2 py-1 bg-red-100 text-red-700 rounded text-xs">缺卡</span></td>
+          <td class="px-4 py-3 text-sm text-gray-500">2024-03-24</td>
+          <td class="px-4 py-3 text-sm text-gray-500">下班未打卡</td>
+          <td class="px-4 py-3"><span class="px-2 py-1 bg-green-100 text-green-700 rounded text-xs">已处理</span></td>
+        </tr>
+        <tr class="hover:bg-gray-50 transition-colors">
+          <td class="px-4 py-3 text-sm text-gray-900">4</td>
+          <td class="px-4 py-3 text-sm text-gray-900">赵六</td>
+          <td class="px-4 py-3 text-sm text-gray-500">EMP004</td>
+          <td class="px-4 py-3 text-sm text-gray-500">人力资源部</td>
+          <td class="px-4 py-3"><span class="px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs">漏签</span></td>
+          <td class="px-4 py-3 text-sm text-gray-500">2024-03-23</td>
+          <td class="px-4 py-3 text-sm text-gray-500">外出拜访客户忘记打卡</td>
+          <td class="px-4 py-3"><span class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-xs">待处理</span></td>
+        </tr>
+        <tr class="hover:bg-gray-50 transition-colors">
+          <td class="px-4 py-3 text-sm text-gray-900">5</td>
+          <td class="px-4 py-3 text-sm text-gray-900">孙七</td>
+          <td class="px-4 py-3 text-sm text-gray-500">EMP005</td>
+          <td class="px-4 py-3 text-sm text-gray-500">财务部</td>
+          <td class="px-4 py-3"><span class="px-2 py-1 bg-orange-100 text-orange-700 rounded text-xs">迟到</span></td>
+          <td class="px-4 py-3 text-sm text-gray-500">2024-03-22</td>
+          <td class="px-4 py-3 text-sm text-gray-500">因交通堵塞迟到20分钟</td>
+          <td class="px-4 py-3"><span class="px-2 py-1 bg-green-100 text-green-700 rounded text-xs">已处理</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 数据表格 - 请假统计 -->
+  <div id="table-leave" class="table-container bg-white rounded-xl border border-gray-200 overflow-hidden hidden">
+    <table class="w-full">
+      <thead class="bg-gray-50 border-b border-gray-200">
+        <tr>
+          <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">序号</th>
+          <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">员工姓名</th>
+          <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">工号</th>
+          <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">部门</th>
+          <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">请假类型</th>
+          <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">请假天数</th>
+          <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">开始日期</th>
+          <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">结束日期</th>
+          <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">状态</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        <tr class="hover:bg-gray-50 transition-colors">
+          <td class="px-4 py-3 text-sm text-gray-900">1</td>
+          <td class="px-4 py-3 text-sm text-gray-900">张三</td>
+          <td class="px-4 py-3 text-sm text-gray-500">EMP001</td>
+          <td class="px-4 py-3 text-sm text-gray-500">技术部</td>
+          <td class="px-4 py-3"><span class="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs">年假</span></td>
+          <td class="px-4 py-3 text-sm text-gray-500">1天</td>
+          <td class="px-4 py-3 text-sm text-gray-500">2024-03-20</td>
+          <td class="px-4 py-3 text-sm text-gray-500">2024-03-20</td>
+          <td class="px-4 py-3"><span class="px-2 py-1 bg-green-100 text-green-700 rounded text-xs">已批准</span></td>
+        </tr>
+        <tr class="hover:bg-gray-50 transition-colors">
+          <td class="px-4 py-3 text-sm text-gray-900">2</td>
+          <td class="px-4 py-3 text-sm text-gray-900">李四</td>
+          <td class="px-4 py-3 text-sm text-gray-500">EMP002</td>
+          <td class="px-4 py-3 text-sm text-gray-500">产品部</td>
+          <td class="px-4 py-3"><span class="px-2 py-1 bg-red-100 text-red-700 rounded text-xs">病假</span></td>
+          <td class="px-4 py-3 text-sm text-gray-500">2天</td>
+          <td class="px-4 py-3 text-sm text-gray-500">2024-03-18</td>
+          <td class="px-4 py-3 text-sm text-gray-500">2024-03-19</td>
+          <td class="px-4 py-3"><span class="px-2 py-1 bg-green-100 text-green-700 rounded text-xs">已批准</span></td>
+        </tr>
+        <tr class="hover:bg-gray-50 transition-colors">
+          <td class="px-4 py-3 text-sm text-gray-900">3</td>
+          <td class="px-4 py-3 text-sm text-gray-900">赵六</td>
+          <td class="px-4 py-3 text-sm text-gray-500">EMP004</td>
+          <td class="px-4 py-3 text-sm text-gray-500">人力资源部</td>
+          <td class="px-4 py-3"><span class="px-2 py-1 bg-green-100 text-green-700 rounded text-xs">事假</span></td>
+          <td class="px-4 py-3 text-sm text-gray-500">4天</td>
+          <td class="px-4 py-3 text-sm text-gray-500">2024-03-25</td>
+          <td class="px-4 py-3 text-sm text-gray-500">2024-03-28</td>
+          <td class="px-4 py-3"><span class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-xs">待审批</span></td>
+        </tr>
+        <tr class="hover:bg-gray-50 transition-colors">
+          <td class="px-4 py-3 text-sm text-gray-900">4</td>
+          <td class="px-4 py-3 text-sm text-gray-900">周八</td>
+          <td class="px-4 py-3 text-sm text-gray-500">EMP006</td>
+          <td class="px-4 py-3 text-sm text-gray-500">技术部</td>
+          <td class="px-4 py-3"><span class="px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs">调休</span></td>
+          <td class="px-4 py-3 text-sm text-gray-500">0.5天</td>
+          <td class="px-4 py-3 text-sm text-gray-500">2024-03-22</td>
+          <td class="px-4 py-3 text-sm text-gray-500">2024-03-22</td>
+          <td class="px-4 py-3"><span class="px-2 py-1 bg-green-100 text-green-700 rounded text-xs">已批准</span></td>
+        </tr>
+        <tr class="hover:bg-gray-50 transition-colors">
+          <td class="px-4 py-3 text-sm text-gray-900">5</td>
+          <td class="px-4 py-3 text-sm text-gray-900">吴九</td>
+          <td class="px-4 py-3 text-sm text-gray-500">EMP007</td>
+          <td class="px-4 py-3 text-sm text-gray-500">运营部</td>
+          <td class="px-4 py-3"><span class="px-2 py-1 bg-pink-100 text-pink-700 rounded text-xs">婚假</span></td>
+          <td class="px-4 py-3 text-sm text-gray-500">3天</td>
+          <td class="px-4 py-3 text-sm text-gray-500">2024-04-01</td>
+          <td class="px-4 py-3 text-sm text-gray-500">2024-04-03</td>
+          <td class="px-4 py-3"><span class="px-2 py-1 bg-green-100 text-green-700 rounded text-xs">已批准</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 分页 -->
+  <div class="flex justify-between items-center mt-4">
+    <p class="text-sm text-gray-500" id="pagination-info">共 156 条记录</p>
+    <div class="flex gap-1">
+      <button class="px-3 py-1 border border-gray-300 rounded text-gray-600 hover:bg-gray-50">&lt;</button>
+      <button class="px-3 py-1 bg-primary text-white rounded">1</button>
+      <button class="px-3 py-1 border border-gray-300 rounded text-gray-600 hover:bg-gray-50">2</button>
+      <button class="px-3 py-1 border border-gray-300 rounded text-gray-600 hover:bg-gray-50">3</button>
+      <button class="px-3 py-1 border border-gray-300 rounded text-gray-600 hover:bg-gray-50">...</button>
+      <button class="px-3 py-1 border border-gray-300 rounded text-gray-600 hover:bg-gray-50">16</button>
+      <button class="px-3 py-1 border border-gray-300 rounded text-gray-600 hover:bg-gray-50">&gt;</button>
+    </div>
+  </div>
+
+  <!-- 自定义报表弹窗 -->
+  <div id="modal-overlay" class="fixed inset-0 bg-black/50 z-40 hidden" onclick="closeModal()"></div>
+  <div id="custom-modal" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-xl shadow-xl z-50 w-full max-w-lg p-6 hidden">
+    <div class="flex justify-between items-center mb-4">
+      <h3 class="text-lg font-semibold">自定义报表</h3>
+      <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <form class="space-y-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">报表名称 <span class="text-red-500">*</span></label>
+        <input type="text" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" placeholder="请输入报表名称" required>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">统计维度</label>
+        <div class="flex flex-wrap gap-2">
+          <label class="flex items-center gap-2 px-3 py-1.5 border rounded-lg cursor-pointer hover:bg-gray-50">
+            <input type="checkbox" class="rounded border-gray-300" checked> 部门
+          </label>
+          <label class="flex items-center gap-2 px-3 py-1.5 border rounded-lg cursor-pointer hover:bg-gray-50">
+            <input type="checkbox" class="rounded border-gray-300" checked> 员工
+          </label>
+          <label class="flex items-center gap-2 px-3 py-1.5 border rounded-lg cursor-pointer hover:bg-gray-50">
+            <input type="checkbox" class="rounded border-gray-300"> 时间段
+          </label>
+          <label class="flex items-center gap-2 px-3 py-1.5 border rounded-lg cursor-pointer hover:bg-gray-50">
+            <input type="checkbox" class="rounded border-gray-300"> 考勤组
+          </label>
+        </div>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">显示字段</label>
+        <div class="flex flex-wrap gap-2">
+          <label class="flex items-center gap-2 px-3 py-1.5 border rounded-lg cursor-pointer hover:bg-gray-50">
+            <input type="checkbox" class="rounded border-gray-300" checked> 出勤天数
+          </label>
+          <label class="flex items-center gap-2 px-3 py-1.5 border rounded-lg cursor-pointer hover:bg-gray-50">
+            <input type="checkbox" class="rounded border-gray-300" checked> 迟到次数
+          </label>
+          <label class="flex items-center gap-2 px-3 py-1.5 border rounded-lg cursor-pointer hover:bg-gray-50">
+            <input type="checkbox" class="rounded border-gray-300" checked> 早退次数
+          </label>
+          <label class="flex items-center gap-2 px-3 py-1.5 border rounded-lg cursor-pointer hover:bg-gray-50">
+            <input type="checkbox" class="rounded border-gray-300"> 请假天数
+          </label>
+          <label class="flex items-center gap-2 px-3 py-1.5 border rounded-lg cursor-pointer hover:bg-gray-50">
+            <input type="checkbox" class="rounded border-gray-300"> 加班时长
+          </label>
+        </div>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">备注</label>
+        <textarea rows="2" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" placeholder="请输入备注"></textarea>
+      </div>
+    </form>
+    <div class="flex justify-end gap-3 mt-6">
+      <button onclick="closeModal()" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">取消</button>
+      <button onclick="generateCustomReport()" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">生成报表</button>
+    </div>
+  </div>
+
+  <script>
+    // Tab切换
+    function switchTab(tab) {
+      // 隐藏所有表格
+      document.querySelectorAll('.table-container').forEach(t => t.classList.add('hidden'));
+      // 移除所有Tab激活状态
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('text-primary', 'border-primary', 'bg-primary/5');
+        btn.classList.add('text-gray-500', 'border-transparent');
+      });
+
+      // 显示对应表格
+      document.getElementById('table-' + tab).classList.remove('hidden');
+      // 激活对应Tab
+      const activeTab = document.getElementById('tab-' + tab);
+      activeTab.classList.remove('text-gray-500', 'border-transparent');
+      activeTab.classList.add('text-primary', 'border-primary', 'bg-primary/5');
+
+      // 更新统计数据
+      updateStats(tab);
+    }
+
+    // 更新统计数据
+    function updateStats(tab) {
+      const stats = {
+        daily: { rate: '96.8%', late: '12', early: '5', leave: '8' },
+        monthly: { rate: '94.5%', late: '45', early: '18', leave: '32' },
+        abnormal: { rate: '--', late: '12', early: '5', leave: '--' },
+        leave: { rate: '--', late: '--', early: '--', leave: '8' }
+      };
+
+      const data = stats[tab];
+      document.getElementById('stat-rate').textContent = data.rate;
+      document.getElementById('stat-late').textContent = data.late;
+      document.getElementById('stat-early').textContent = data.early;
+      document.getElementById('stat-leave').textContent = data.leave;
+    }
+
+    // 查询数据
+    function queryData() {
+      const dept = document.getElementById('filter-dept').value;
+      const start = document.getElementById('filter-start').value;
+      const end = document.getElementById('filter-end').value;
+      const group = document.getElementById('filter-group').value;
+
+      // 模拟查询
+      alert('查询条件：\n部门：' + (dept || '全部') + '\n开始日期：' + start + '\n结束日期：' + end + '\n考勤组：' + (group || '全部'));
+    }
+
+    // 重置筛选
+    function resetFilter() {
+      document.getElementById('filter-dept').value = '';
+      document.getElementById('filter-start').value = '2024-03-01';
+      document.getElementById('filter-end').value = '2024-03-31';
+      document.getElementById('filter-group').value = '';
+    }
+
+    // 打开自定义报表弹窗
+    function openCustomReport() {
+      document.getElementById('modal-overlay').classList.remove('hidden');
+      document.getElementById('custom-modal').classList.remove('hidden');
+    }
+
+    // 关闭弹窗
+    function closeModal() {
+      document.getElementById('modal-overlay').classList.add('hidden');
+      document.getElementById('custom-modal').classList.add('hidden');
+    }
+
+    // 导出报表
+    function exportReport() {
+      alert('报表导出中，请稍候...\n\n导出格式：Excel\n导出范围：当前筛选条件下的所有数据');
+    }
+
+    // 生成自定义报表
+    function generateCustomReport() {
+      alert('自定义报表生成成功！\n\n报表将在后台生成，完成后会发送通知。');
+      closeModal();
+    }
+  </script>
+</body>
+</html>

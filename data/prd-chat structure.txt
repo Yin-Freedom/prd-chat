@@ -1,0 +1,21 @@
+  .claude/skills/prd-chat/
+  ├── SKILL.md                              # Skill主配置文件
+  ├── prompts/                              # Prompt模板
+  │   ├── phases/                           # 各阶段引导问题模板
+  │   │   ├── phase1-product.md             # 阶段1：产品背景
+  │   │   ├── phase2-roles.md               # 阶段2：用户角色
+  │   │   ├── phase3-modules.md             # 阶段3：功能模块
+  │   │   ├── phase4-flows.md               # 阶段4：业务流程
+  │   │   └── phase5-nonfunctional.md       # 阶段5：非功能需求
+  │   └── output/                           # 输出生成模板
+  │       ├── document-generation.md        # 需求文档生成
+  │       └── prototype-generation.md       # HTML原型生成
+  ├── references/                           # 参考文档
+  │   ├── quick-reference.md                # 快速参考卡
+  │   ├── information-model.md              # 数据结构定义
+  │   └── document-template.md              # 文档模板
+  ├── strategies/                           # 策略文档
+  │   ├── token-optimization.md             # Token优化策略
+  │   └── summary-implementation.md         # 摘要实现策略
+  └── examples/                             # 示例
+      └── example-conversation.md           # 对话示例
